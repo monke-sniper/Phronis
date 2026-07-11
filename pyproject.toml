@@ -39,8 +39,8 @@ dependencies = [
 llamacli = "llamacli.cli:entry"
 
 [project.urls]
-Homepage = "https://github.com/llamacli/llamacli"
-Repository = "https://github.com/llamacli/llamacli"
+Homepage = "https://github.com/monke-sniper/llamacli"
+Repository = "https://github.com/monke-sniper/llamacli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llamacli"]

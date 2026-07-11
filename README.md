@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/llamacli/llamacli/main/assets/demo.gif" alt="llamacli demo" width="600">
+  <img src="https://raw.githubusercontent.com/monke-sniper/llamacli/main/assets/demo.gif" alt="llamacli demo" width="600">
 </p>
 
 <p align="center">
-  <a href="https://github.com/llamacli/llamacli"><img src="https://img.shields.io/badge/llamacli-v0.1.0-blue" alt="version"></a>
+  <a href="https://github.com/monke-sniper/llamacli"><img src="https://img.shields.io/badge/llamacli-v0.1.0-blue" alt="version"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="python"></a>
-  <a href="https://github.com/llamacli/llamacli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="license"></a>
+  <a href="https://github.com/monke-sniper/llamacli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="license"></a>
 </p>
 
 <p align="center"><strong>Tech Stack</strong></p>
