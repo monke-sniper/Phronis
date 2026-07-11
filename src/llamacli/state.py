@@ -36,6 +36,9 @@ class AppState:
         else:
             data = {}
         merged = {**DEFAULT_CONFIG, **data}
+        # ensure we never mutate the module-level default list
+        if "training_history" not in data:
+            merged["training_history"] = list(DEFAULT_CONFIG["training_history"])
         return cls(**merged)
 
 

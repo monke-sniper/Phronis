@@ -1,0 +1,10 @@
+{
+  "identity": {
+    "file_name": "identity.json",
+    "formatting": "alpaca"
+  },
+  "demo_chat": {
+    "file_name": "demo_chat.json",
+    "formatting": "sharegpt"
+  }
+}

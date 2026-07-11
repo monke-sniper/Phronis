@@ -221,6 +221,7 @@ class TestMainMenu:
         assert "export" in values
         assert "view_models" in values
         assert "view_datasets" in values
+        assert "demo_datasets" in values
         assert "add_dataset" in values
         assert "workspace_info" in values
         assert "system_check" in values

@@ -1,0 +1,17 @@
+[
+  {
+    "instruction": "What is 2 + 2?",
+    "input": "",
+    "output": "The answer is 4."
+  },
+  {
+    "instruction": "Write a short haiku about AI.",
+    "input": "",
+    "output": "Circuits hum with thought,\nSilicon dreams take shape now,\nMind born from the code."
+  },
+  {
+    "instruction": "Translate 'hello' into French.",
+    "input": "",
+    "output": "Bonjour."
+  }
+]

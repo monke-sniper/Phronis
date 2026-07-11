@@ -14,10 +14,13 @@ from . import CONFIGS_DIR, MODELS_DIR, SAVES_DIR
 from .hf import download_model_interactive, download_dataset_interactive
 from .bootstrap import run_bootstrap
 from .logo import print_logo
+from .repro import gather_repro_metadata, format_repro_header
 from .prompts import (
     _count_dataset,
+    _count_demo_dataset,
     _list_cached_models,
     _list_datasets,
+    _list_demo_datasets,
     detect_template,
     prompt_chat_model,
     prompt_dataset,
@@ -46,6 +49,7 @@ MAIN_MENU = [
     questionary.Choice(title="  Export Adapter", value="export"),
     questionary.Choice(title="  View Models", value="view_models"),
     questionary.Choice(title="  View Datasets", value="view_datasets"),
+    questionary.Choice(title="  Demo Datasets", value="demo_datasets"),
     questionary.Choice(title="  Add Dataset", value="add_dataset"),
     questionary.Choice(title="  Workspace Info", value="workspace_info"),
     questionary.Choice(title="  System Check", value="system_check"),
@@ -145,10 +149,19 @@ def _record_training(output_name, model, dataset, stage, epochs, template):
         pass
 
 
-def _write_config_and_train(console, config, output_name):
+def _write_config_and_train(console, config, output_name, command="train", **cli_args):
     os.makedirs(CONFIGS_DIR, exist_ok=True)
     config_path = os.path.join(CONFIGS_DIR, f"llamacli_{output_name}.yaml")
+
+    # Ensure the output_dir inside the config matches the filename-based run name
+    config["output_dir"] = os.path.join("saves", output_name, "lora")
+
+    metadata = gather_repro_metadata(command, output_name=output_name, **cli_args)
+    config.setdefault("seed", metadata["random_seed"])
+
+    header = format_repro_header(metadata)
     with open(config_path, "w", encoding="utf-8") as f:
+        f.write(header)
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
     console.print(f"\n[dim]Config saved: {config_path}[/]")
     return run_training(console, config_path, output_name)
@@ -194,7 +207,11 @@ def quick_train(console):
         return
 
     output_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    success = _write_config_and_train(console, config, output_name)
+    success = _write_config_and_train(
+        console, config, output_name,
+        command="quick_train",
+        model=model, template=template, dataset=dataset, epochs=epochs,
+    )
     if success:
         console.print(f"\n[green]Training complete! Output: saves/{output_name}/lora[/]")
         _record_training(output_name, model, dataset, "sft", epochs, template)
@@ -255,7 +272,12 @@ def advanced_train(console):
         console.print("[dim]Cancelled.[/]")
         return
 
-    success = _write_config_and_train(console, config, output_name)
+    success = _write_config_and_train(
+        console, config, output_name,
+        command="advanced_train",
+        model=model, template=template, dataset=dataset, stage=stage,
+        finetuning_type=finetuning_type, epochs=params.get("epochs", 3),
+    )
     if success:
         console.print(f"\n[green]Training complete! Output: saves/{output_name}/lora[/]")
         _record_training(output_name, model, dataset, stage, params.get("epochs", 3), template)
@@ -425,6 +447,37 @@ def view_datasets_screen(console):
         mark = " *" if d["name"] == state.active_dataset else ""
         cnt = _count_dataset(d["name"])
         table.add_row(str(i), d["name"] + mark, str(cnt), d["format"], d.get("source", "-"))
+    console.print(table)
+
+    try:
+        choice = console.input("\n[dim]Set active dataset # (or Enter to skip): [/]").strip()
+        if choice.isdigit():
+            idx = int(choice) - 1
+            if 0 <= idx < len(datasets):
+                state.active_dataset = datasets[idx]["name"]
+                state.save()
+                console.print(f"[green]Active dataset: {state.active_dataset}[/]")
+    except (KeyboardInterrupt, EOFError):
+        pass
+
+
+def view_demo_datasets_screen(console):
+    datasets = _list_demo_datasets()
+    state = get_state()
+    console.print(f"\n[bold white]Demo Datasets ({len(datasets)})[/bold white]\n")
+    if not datasets:
+        console.print("[dim]No demo datasets are bundled with this install.[/]")
+        return
+
+    table = Table(show_header=True, header_style="bold white", border_style="white")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Dataset", style="white")
+    table.add_column("Examples", style="dim", width=10)
+    table.add_column("Format", style="dim", width=10)
+    for i, d in enumerate(datasets, 1):
+        mark = " *" if d["name"] == state.active_dataset else ""
+        cnt = _count_demo_dataset(d["name"])
+        table.add_row(str(i), d["name"] + mark, str(cnt), d["format"])
     console.print(table)
 
     try:
@@ -711,6 +764,9 @@ def interactive_loop():
             elif choice == "view_datasets":
                 view_datasets_screen(console)
                 console.input("\n[dim]Press Enter to return to menu...[/]")
+            elif choice == "demo_datasets":
+                view_demo_datasets_screen(console)
+                console.input("\n[dim]Press Enter to return to menu...[/]")
             elif choice == "add_dataset":
                 add_dataset_screen(console)
                 console.input("\n[dim]Press Enter to return to menu...[/]")
@@ -806,12 +862,12 @@ def train(
         "warmup_ratio": 0.1,
         "bf16": True,
     }
-    os.makedirs(CONFIGS_DIR, exist_ok=True)
-    config_path = os.path.join(CONFIGS_DIR, f"llamacli_{output_name}.yaml")
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
-    console.print(f"[dim]Config: {config_path}[/]")
-    success = run_training(console, config_path, output_name)
+    success = _write_config_and_train(
+        console, config, output_name,
+        command="train",
+        model=model, dataset=dataset, stage=stage, epochs=epochs,
+        lr=lr, batch=batch, cutoff=cutoff, lora_rank=lora_rank,
+    )
     if success:
         console.print(f"\n[green]Training complete![/]")
         _record_training(output_name, model, dataset, stage, epochs, template)

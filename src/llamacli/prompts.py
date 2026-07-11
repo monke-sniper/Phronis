@@ -6,7 +6,15 @@ import glob
 import questionary
 from rich.console import Console
 
-from . import DATA_DIR, DATASET_INFO, HF_CACHE, MODELS_DIR, SAVES_DIR
+from . import (
+    DATA_DIR,
+    DATASET_INFO,
+    HF_CACHE,
+    MODELS_DIR,
+    SAVES_DIR,
+    BUNDLED_DATA_DIR,
+    BUNDLED_DATASET_INFO,
+)
 from .state import get_state
 
 
@@ -294,6 +302,74 @@ def _count_dataset(name):
     return 0
 
 
+def _list_demo_datasets():
+    datasets = {}
+    if not os.path.isdir(BUNDLED_DATA_DIR):
+        return []
+    if os.path.isfile(BUNDLED_DATASET_INFO):
+        try:
+            with open(BUNDLED_DATASET_INFO, "r", encoding="utf-8") as f:
+                registry = json.load(f)
+            for name, info in registry.items():
+                datasets[name] = {
+                    "name": name,
+                    "format": info.get("formatting", "alpaca"),
+                    "source": "demo",
+                }
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    for fname in sorted(os.listdir(BUNDLED_DATA_DIR)):
+        if fname.startswith(".") or fname == "dataset_info.json":
+            continue
+        fpath = os.path.join(BUNDLED_DATA_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+        name = os.path.splitext(fname)[0]
+        if name in datasets:
+            continue
+        if fname.endswith(".json"):
+            try:
+                with open(fpath, "r", encoding="utf-8-sig") as f:
+                    data = json.load(f)
+                fmt = _detect_format(data)
+                if fmt:
+                    datasets[name] = {"name": name, "format": fmt, "source": "demo"}
+            except (json.JSONDecodeError, OSError):
+                pass
+        elif fname.endswith(".jsonl"):
+            try:
+                with open(fpath, "r", encoding="utf-8-sig") as f:
+                    first_line = f.readline().strip()
+                if first_line:
+                    first = json.loads(first_line)
+                    if isinstance(first, dict):
+                        if "instruction" in first and "output" in first:
+                            datasets[name] = {"name": name, "format": "alpaca", "source": "demo"}
+                        elif "messages" in first or "conversations" in first:
+                            datasets[name] = {"name": name, "format": "sharegpt", "source": "demo"}
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    return [v for _, v in sorted(datasets.items())]
+
+
+def _count_demo_dataset(name):
+    candidates = [
+        os.path.join(BUNDLED_DATA_DIR, f"{name}.json"),
+        os.path.join(BUNDLED_DATA_DIR, f"{name}.jsonl"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return len(data) if isinstance(data, list) else 1
+            except Exception:
+                return 0
+    return 0
+
+
 def prompt_model(console: Console):
     cached = _list_cached_models()
     state = get_state()
@@ -358,6 +434,43 @@ def prompt_dataset(console: Console):
     datasets = _list_datasets()
     state = get_state()
     if not datasets:
+        demo_datasets = _list_demo_datasets()
+        if demo_datasets:
+            console.print(f"[yellow]No personal datasets found.[/]")
+            console.print(f"[dim]You can use a built-in demo dataset below, drop files in {DATA_DIR}, or use 'Add Dataset'.[/]")
+            console.print()
+            choices = []
+            for d in demo_datasets:
+                cnt = _count_demo_dataset(d["name"])
+                label = f"{d['name']} ({cnt} ex, {d['format']}) [demo]"
+                checked = d["name"] == state.active_dataset
+                choices.append(questionary.Choice(title=label, value=d["name"], checked=checked))
+            choices.append(questionary.Choice(title="Custom dataset...", value="__custom__"))
+
+            try:
+                selected = questionary.checkbox(
+                    "Select dataset(s) (Space to toggle):",
+                    choices=choices,
+                    pointer=">",
+                    use_arrow_keys=True,
+                    use_jk_keys=True,
+                    instruction="(Space to select, Enter to confirm)",
+                ).ask()
+            except (KeyboardInterrupt, EOFError):
+                return None
+
+            if selected is None:
+                return None
+            if isinstance(selected, list) and len(selected) == 0:
+                console.print("[yellow]No dataset selected. Press Space on a dataset to select it, then Enter to confirm.[/]")
+                return None
+            filtered = [s for s in selected if s != "__custom__"]
+            if "__custom__" in selected:
+                custom = console.input("[dim]Custom dataset name: [/]").strip()
+                if custom:
+                    filtered.append(custom)
+            return ",".join(filtered) if filtered else None
+
         console.print(f"[yellow]No datasets found.[/]")
         console.print(f"[dim]Drop .json or .jsonl files in {DATA_DIR}[/]")
         console.print("[dim]Format: [{instruction: ..., output: ...}, ...] for alpaca, or [{messages: [...]}] for sharegpt[/]")

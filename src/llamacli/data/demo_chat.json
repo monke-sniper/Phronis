@@ -1,0 +1,20 @@
+[
+  {
+    "messages": [
+      {"role": "user", "content": "What is the capital of France?"},
+      {"role": "assistant", "content": "The capital of France is Paris."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Explain recursion in one sentence."},
+      {"role": "assistant", "content": "Recursion is when a function calls itself until it reaches a base case that stops the repetition."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Write a short haiku about coding."},
+      {"role": "assistant", "content": "Fingers dance on keys,\nLogic woven into lines,\nSoftware comes alive."}
+    ]
+  }
+]

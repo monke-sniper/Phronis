@@ -61,6 +61,7 @@ class TestImports:
             quick_chat,
             view_models_screen,
             view_datasets_screen,
+            view_demo_datasets_screen,
             add_dataset_screen,
             export_screen,
             show_main_menu,

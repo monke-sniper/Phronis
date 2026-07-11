@@ -13,6 +13,9 @@ CONFIGS_DIR = _dirs["configs"]
 DATASET_INFO = os.path.join(DATA_DIR, "dataset_info.json")
 HF_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub")
 
+BUNDLED_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+BUNDLED_DATASET_INFO = os.path.join(BUNDLED_DATA_DIR, "dataset_info.json")
+
 DEFAULT_CONFIG = {
     "active_model": "",
     "active_adapter": "",
