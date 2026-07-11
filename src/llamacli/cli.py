@@ -156,6 +156,7 @@ def _write_config_and_train(console, config, output_name, command="train", **cli
     # Ensure the output_dir inside the config matches the filename-based run name
     config["output_dir"] = os.path.join("saves", output_name, "lora")
 
+    console.print("[dim]Gathering reproducibility metadata...[/]")
     metadata = gather_repro_metadata(command, output_name=output_name, **cli_args)
     config.setdefault("seed", metadata["random_seed"])
 

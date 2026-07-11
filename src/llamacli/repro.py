@@ -3,6 +3,7 @@ import random
 import subprocess
 import sys
 from datetime import datetime, timezone
+from importlib.metadata import version as get_pkg_version
 
 
 def _get_git_commit():
@@ -23,18 +24,14 @@ def _get_git_commit():
 
 def _get_llamacli_version():
     try:
-        from importlib.metadata import version
-
-        return version("llamacli")
+        return get_pkg_version("llamacli")
     except Exception:
         return "0.1.0"
 
 
 def _get_llamafactory_version():
     try:
-        import llamafactory
-
-        return getattr(llamafactory, "__version__", "unknown")
+        return get_pkg_version("llamafactory")
     except Exception:
         return "not_installed"
 
