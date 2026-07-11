@@ -42,7 +42,11 @@ def check_gpu():
             return "cuda", torch.cuda.get_device_name(0)
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "mps", "Apple MPS"
-        return "cpu", "CPU only"
+        is_cpu_wheel = torch.version.cuda is None or "cpu" in torch.__version__
+        msg = "CPU only"
+        if is_cpu_wheel:
+            msg += f" (torch wheel: {torch.__version__})"
+        return "cpu", msg
     except ImportError:
         return "unknown", "torch not installed"
 

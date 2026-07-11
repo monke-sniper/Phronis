@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from llamacli.prompts import (
@@ -192,3 +193,37 @@ class TestChatModelPicker:
     def test_prompt_chat_model_exists(self):
         from llamacli.prompts import prompt_chat_model
         assert callable(prompt_chat_model)
+
+
+class TestModelTypeForRepo:
+    def test_missing_cache_returns_none(self):
+        import llamacli.prompts as prompts_mod
+        old_cache = prompts_mod.HF_CACHE
+        try:
+            prompts_mod.HF_CACHE = "/nonexistent/hf/cache_12345"
+            result = prompts_mod._get_model_type_for_repo("fake/repo")
+            assert result is None
+        finally:
+            prompts_mod.HF_CACHE = old_cache
+
+
+class TestDatasetCountJsonl:
+    def test_count_jsonl_by_lines(self, monkeypatch):
+        import tempfile
+        import llamacli.prompts as prompts_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            old_data_dir = prompts_mod.DATA_DIR
+            old_dataset_info = prompts_mod.DATASET_INFO
+            try:
+                prompts_mod.DATA_DIR = tmp
+                prompts_mod.DATASET_INFO = os.path.join(tmp, "dataset_info.json")
+                jsonl_path = os.path.join(tmp, "mydata.jsonl")
+                with open(jsonl_path, "w", encoding="utf-8") as f:
+                    f.write('{"instruction":"a","output":"b"}\n')
+                    f.write('{"instruction":"c","output":"d"}\n')
+                    f.write('\n')
+                cnt = prompts_mod._count_dataset("mydata")
+                assert cnt == 2
+            finally:
+                prompts_mod.DATA_DIR = old_data_dir
+                prompts_mod.DATASET_INFO = old_dataset_info

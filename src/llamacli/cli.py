@@ -700,10 +700,16 @@ def system_check_screen(console):
             gpu_name = torch.cuda.get_device_name(0)
         elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             gpu_name = "Apple MPS"
+        if not gpu_ok:
+            is_cpu_wheel = torch.version.cuda is None or "cpu" in torch.__version__
+            if is_cpu_wheel:
+                gpu_name = f"CPU-only torch wheel ({torch.__version__}) — reinstall with CUDA"
+            else:
+                gpu_name = gpu_name or "No GPU detected"
         table.add_row(
             "GPU (CUDA/MPS)",
             "[green]OK[/]" if gpu_ok else "[yellow]CPU ONLY[/]",
-            gpu_name or "No GPU detected",
+            gpu_name,
         )
     except ImportError:
         table.add_row("GPU (CUDA/MPS)", "[yellow]UNKNOWN[/]", "torch not installed")
@@ -835,6 +841,9 @@ def _check_first_run(console):
         console.print("[dim]Let's check your system before we start.[/]\n")
         run_bootstrap(console)
         console.print()
+        # Persist a default state so the welcome screen only runs once
+        from .state import get_state
+        get_state().save()
 
 
 @app.command()

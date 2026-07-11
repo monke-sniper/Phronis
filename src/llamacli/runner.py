@@ -28,9 +28,17 @@ def _find_cli():
     )
 
 
-VENV_CLI = _find_cli()
+_cli_path = None
 
-METRICS_RE = re.compile(r"\{'loss': '[^']*'")
+
+def _get_cli():
+    global _cli_path
+    if _cli_path is None:
+        _cli_path = _find_cli()
+    return _cli_path
+
+
+METRICS_RE = re.compile(r"'loss'\s*:")
 TOTAL_STEPS_RE = re.compile(r"Total optimization steps\s*=\s*(\d+)")
 
 
@@ -88,7 +96,7 @@ def run_training(console: Console, config_path: str, output_name: str):
     def _stream():
         try:
             proc = subprocess.Popen(
-                [VENV_CLI, "train", config_path],
+                [_get_cli(), "train", config_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -158,7 +166,7 @@ def run_export(console: Console, config_path: str):
     console.print("\n[bold]Exporting model...[/]\n")
     try:
         result = subprocess.run(
-            [VENV_CLI, "export", config_path],
+            [_get_cli(), "export", config_path],
             text=True,
             capture_output=True,
         )

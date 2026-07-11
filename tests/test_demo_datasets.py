@@ -128,3 +128,24 @@ class TestPromptDatasetFallback:
                 llamacli.DATASET_INFO = old_dsi
                 prompts_mod.DATA_DIR = pd_old_data
                 prompts_mod.DATASET_INFO = pd_old_dsi
+
+
+class TestDemoDatasetJsonlCount:
+    def test_count_jsonl_demo_dataset(self):
+        import tempfile
+        import llamacli.prompts as prompts_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            old_dir = prompts_mod.BUNDLED_DATA_DIR
+            old_dsi = prompts_mod.BUNDLED_DATASET_INFO
+            try:
+                prompts_mod.BUNDLED_DATA_DIR = tmp
+                prompts_mod.BUNDLED_DATASET_INFO = os.path.join(tmp, "dataset_info.json")
+                with open(os.path.join(tmp, "chat.jsonl"), "w", encoding="utf-8") as f:
+                    f.write('{"messages":[{"role":"user","content":"hi"}]}\n')
+                    f.write('{"messages":[{"role":"user","content":"hello"}]}\n')
+                    f.write('\n')
+                cnt = prompts_mod._count_demo_dataset("chat")
+                assert cnt == 2
+            finally:
+                prompts_mod.BUNDLED_DATA_DIR = old_dir
+                prompts_mod.BUNDLED_DATASET_INFO = old_dsi

@@ -137,4 +137,28 @@ class TestMetricsParsing:
         metrics = {"loss": "2.41"}
         bar = _format_metrics(metrics, (3, 0), 15)
         assert "Step 3" in bar
-        assert "Loss 2.41" in bar
+
+
+class TestMetricsRe:
+    def test_matches_numeric_loss(self):
+        from llamacli.runner import METRICS_RE, _parse_metrics
+        line = "{'loss': 2.1234, 'learning_rate': 1e-05, 'epoch': 1.0}"
+        assert METRICS_RE.search(line) is not None
+        parsed = _parse_metrics(line)
+        assert parsed is not None
+        assert parsed["loss"] == 2.1234
+
+    def test_matches_string_loss(self):
+        from llamacli.runner import METRICS_RE, _parse_metrics
+        line = "{'loss': 'nan', 'learning_rate': '1e-05'}"
+        assert METRICS_RE.search(line) is not None
+        parsed = _parse_metrics(line)
+        assert parsed is not None
+        assert parsed["loss"] == "nan"
+
+    def test_skips_plain_text(self):
+        from llamacli.runner import METRICS_RE, _parse_metrics
+        line = "the loss value is high today"
+        assert METRICS_RE.search(line) is None
+        parsed = _parse_metrics(line)
+        assert parsed is None

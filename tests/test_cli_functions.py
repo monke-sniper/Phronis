@@ -474,3 +474,30 @@ class TestPromptModelEmpty:
         finally:
             llamacli.HF_CACHE = old_cache
             prompts_mod.HF_CACHE = pd_old_cache
+
+
+class TestCheckFirstRun:
+    def test_creates_marker_after_bootstrap(self, monkeypatch):
+        import tempfile
+        import llamacli
+        import llamacli.cli as cli_mod
+        import llamacli.state as state_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            old_project_root = llamacli.PROJECT_ROOT
+            llamacli.PROJECT_ROOT = tmp
+
+            old_state_path = state_mod.STATE_PATH
+            state_mod.STATE_PATH = os.path.join(tmp, ".llamacli.yaml")
+            state_mod._state = None
+
+            monkeypatch.setattr(cli_mod, "run_bootstrap", lambda c: None)
+
+            try:
+                console = _dummy_console()
+                cli_mod._check_first_run(console)
+                assert os.path.isfile(os.path.join(tmp, ".llamacli.yaml"))
+            finally:
+                llamacli.PROJECT_ROOT = old_project_root
+                state_mod.STATE_PATH = old_state_path
+                state_mod._state = None

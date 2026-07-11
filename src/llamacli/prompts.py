@@ -1,4 +1,3 @@
-import functools
 import json
 import os
 import glob
@@ -18,14 +17,8 @@ from . import (
 from .state import get_state
 
 
-@functools.lru_cache(maxsize=1)
-def _list_cached_models_cached():
-    return _list_cached_models_impl()
-
-
 def _list_cached_models():
-    _list_cached_models_cached.cache_clear()
-    return _list_cached_models_cached()
+    return _list_cached_models_impl()
 
 
 STAGES = [
@@ -118,6 +111,8 @@ def _list_cached_models_impl():
 
 
 def _get_model_type_for_repo(repo_id):
+    if not os.path.isdir(HF_CACHE):
+        return None
     for entry in os.listdir(HF_CACHE):
         if not os.path.isdir(os.path.join(HF_CACHE, entry)):
             continue
@@ -133,7 +128,7 @@ def _get_model_type_for_repo(repo_id):
                     config_file = os.path.join(snapshots_dir, snaps[0], "config.json")
                     if os.path.isfile(config_file):
                         try:
-                            with open(config_file, "r") as f:
+                            with open(config_file, "r", encoding="utf-8") as f:
                                 return json.load(f).get("model_type", "?")
                         except Exception:
                             pass
@@ -279,6 +274,9 @@ def _count_dataset(name):
     for path in candidates:
         if os.path.isfile(path):
             try:
+                if path.endswith(".jsonl"):
+                    with open(path, "r", encoding="utf-8") as f:
+                        return sum(1 for line in f if line.strip())
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 return len(data) if isinstance(data, list) else 1
@@ -294,6 +292,9 @@ def _count_dataset(name):
             fpath = os.path.join(DATA_DIR, file_name)
             if os.path.isfile(fpath):
                 try:
+                    if fpath.endswith(".jsonl"):
+                        with open(fpath, "r", encoding="utf-8") as f:
+                            return sum(1 for line in f if line.strip())
                     with open(fpath, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     return len(data) if isinstance(data, list) else 1
@@ -362,6 +363,9 @@ def _count_demo_dataset(name):
     for path in candidates:
         if os.path.isfile(path):
             try:
+                if path.endswith(".jsonl"):
+                    with open(path, "r", encoding="utf-8") as f:
+                        return sum(1 for line in f if line.strip())
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 return len(data) if isinstance(data, list) else 1
