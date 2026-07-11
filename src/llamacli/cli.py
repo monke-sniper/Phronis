@@ -127,6 +127,7 @@ def _build_config(model, template, dataset, epochs, finetuning_type, params, out
         "model_name_or_path": model,
         "template": template,
         "dataset": dataset,
+        "dataset_dir": DATA_DIR,
         "output_dir": os.path.join("saves", output_name, "lora"),
     }
     config.update(SMART_DEFAULTS)
@@ -891,6 +892,7 @@ def train(
         "lora_dropout": 0.05,
         "lora_target": "all",
         "dataset": dataset,
+        "dataset_dir": DATA_DIR,
         "template": template,
         "cutoff_len": cutoff,
         "max_samples": 10000,

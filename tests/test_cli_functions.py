@@ -25,6 +25,9 @@ class TestBuildConfig:
         assert config["lora_rank"] == 8
         assert config["lora_dropout"] == 0.05
         assert "run_test" in config["output_dir"] and "lora" in config["output_dir"]
+        assert "dataset_dir" in config
+        import os
+        assert os.path.isabs(config["dataset_dir"])
 
     def test_quick_train_config_custom_params(self):
         from llamacli.cli import _build_config
