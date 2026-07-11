@@ -13,6 +13,15 @@ from rich.panel import Panel
 
 
 def _find_cli():
+    # 1. Prefer the isolated workspace venv
+    try:
+        from .env_setup import _venv_cli
+        venv_cli = _venv_cli()
+        if os.path.isfile(venv_cli):
+            return venv_cli
+    except Exception:
+        pass
+
     cli = shutil.which("llamafactory-cli")
     if cli:
         return cli

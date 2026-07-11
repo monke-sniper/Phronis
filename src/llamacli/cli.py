@@ -908,7 +908,40 @@ def train(
 
 
 def entry():
-    app()
+    """Entry point with transparent isolated-env forwarding."""
+    from .env_setup import (
+        ensure_isolated_venv,
+        forward_to_venv,
+        is_inside_isolated_venv,
+        is_python_version_compatible,
+    )
+
+    cur_major, cur_minor, _ = sys.version_info[:3]
+    already_in_venv = is_inside_isolated_venv()
+    version_ok = is_python_version_compatible(cur_major, cur_minor)
+
+    if already_in_venv or version_ok:
+        app()
+        return
+
+    # Wrong python version. Set up (or reuse) the isolated venv and forward.
+    console.print(
+        f"[yellow]Python {cur_major}.{cur_minor} detected. "
+        "CUDA PyTorch wheels are unavailable for this version.[/]"
+    )
+    console.print("[dim]Setting up an isolated workspace environment...[/]")
+    if ensure_isolated_venv(console):
+        console.print("[green]Environment ready — restarting inside isolated venv...[/]\n")
+        result = forward_to_venv()
+        if result is not None and result.returncode != 0:
+            sys.exit(result.returncode)
+        sys.exit(0)
+    else:
+        console.print(
+            "[red]Could not create isolated environment. "
+            "Install Python 3.12 and try again.[/]"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -140,28 +140,28 @@ def run_bootstrap(console: Console, force=False):
 
 def _install_missing(console: Console, missing: list):
     install_map = {
-        "LLaMA-Factory CLI": "llamafactory",
-        "HuggingFace CLI": "huggingface-hub",
-        "PyTorch": "torch",
-        "huggingface-hub": "huggingface-hub",
+        "LLaMA-Factory CLI": ["llamafactory"],
+        "HuggingFace CLI": ["huggingface-hub"],
+        "PyTorch": ["torch", "torchvision", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu124"],
+        "huggingface-hub": ["huggingface-hub"],
     }
 
     for name in missing:
-        pkg = install_map.get(name, name.lower().replace(" ", "-"))
-        console.print(f"\n[bold]Installing {pkg}...[/]")
+        args = install_map.get(name, [name.lower().replace(" ", "-")])
+        console.print(f"\n[bold]Installing {args[0]}...[/]")
         try:
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", pkg],
+                [sys.executable, "-m", "pip", "install"] + args,
                 capture_output=True,
                 text=True,
             )
             if result.returncode == 0:
-                console.print(f"[green]Installed {pkg}[/]")
+                console.print(f"[green]Installed {args[0]}[/]")
             else:
-                console.print(f"[red]Failed to install {pkg}[/]")
+                console.print(f"[red]Failed to install {args[0]}[/]")
                 console.print(f"[dim]{result.stderr[-500:]}[/]")
         except Exception as e:
-            console.print(f"[red]Error installing {pkg}: {e}[/]")
+            console.print(f"[red]Error installing {args[0]}: {e}[/]")
 
     console.print("\n[green]Setup complete![/]")
-    console.print("[dim]If anything failed, install manually: pip install llamafactory huggingface-hub torch[/]")
+    console.print("[dim]If anything failed, install manually: pip install llamafactory huggingface-hub torch --index-url https://download.pytorch.org/whl/cu124[/]")
