@@ -1,3 +1,5 @@
+import shutil
+
 import json
 import os
 import yaml
@@ -165,3 +167,42 @@ def init_workspace():
     workspace_path = get_workspace_path()
     dirs = ensure_workspace_dirs(workspace_path)
     return workspace_path, dirs
+
+
+def sync_demo_datasets(bundled_data_dir, bundled_dataset_info, data_dir, dataset_info_path):
+    """Copy bundled demo datasets into the workspace so LLaMA-Factory can use them.
+
+    This is called at startup and whenever a new venv is created. It copies
+    any bundled dataset files that are missing or newer in the workspace,
+    and merges their metadata into the workspace ``dataset_info.json``.
+    """
+    if not os.path.isdir(bundled_data_dir) or not os.path.isfile(bundled_dataset_info):
+        return
+
+    with open(bundled_dataset_info, "r", encoding="utf-8") as f:
+        bundled_registry = json.load(f)
+
+    workspace_registry = {}
+    if os.path.isfile(dataset_info_path):
+        try:
+            with open(dataset_info_path, "r", encoding="utf-8") as f:
+                workspace_registry = json.load(f) or {}
+        except (json.JSONDecodeError, OSError):
+            workspace_registry = {}
+
+    changed = False
+    for name, info in bundled_registry.items():
+        file_name = info.get("file_name", f"{name}.json")
+        src = os.path.join(bundled_data_dir, file_name)
+        dst = os.path.join(data_dir, file_name)
+        if os.path.isfile(src):
+            if not os.path.isfile(dst) or os.path.getmtime(src) > os.path.getmtime(dst):
+                shutil.copy2(src, dst)
+                changed = True
+        if name not in workspace_registry:
+            workspace_registry[name] = info
+            changed = True
+
+    if changed:
+        with open(dataset_info_path, "w", encoding="utf-8") as f:
+            json.dump(workspace_registry, f, indent=2, ensure_ascii=False)

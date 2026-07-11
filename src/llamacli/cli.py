@@ -10,7 +10,15 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-from . import CONFIGS_DIR, MODELS_DIR, SAVES_DIR
+from . import (
+    BUNDLED_DATA_DIR,
+    BUNDLED_DATASET_INFO,
+    CONFIGS_DIR,
+    DATASET_INFO,
+    DATA_DIR,
+    MODELS_DIR,
+    SAVES_DIR,
+)
 from .hf import download_model_interactive, download_dataset_interactive
 from .bootstrap import run_bootstrap
 from .logo import print_logo
@@ -824,6 +832,13 @@ def main(
     ctx: typer.Context,
     version: bool = typer.Option(False, "--version", "-v", help="Show version"),
 ):
+    from .workspace import sync_demo_datasets
+    sync_demo_datasets(
+        BUNDLED_DATA_DIR,
+        BUNDLED_DATASET_INFO,
+        DATA_DIR,
+        DATASET_INFO,
+    )
     if version:
         from . import PROJECT_ROOT
         console.print(f"[white]llamacli[/] [bold]{PROJECT_ROOT}[/]")
