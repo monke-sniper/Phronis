@@ -8,14 +8,13 @@
   <a href="https://github.com/monke-sniper/llamacli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="license"></a>
 </p>
 
-<p align="center"><strong>Tech Stack</strong></p>
 <p align="center">
-  <a href="https://github.com/hiyouga/LLaMA-Factory">LLaMA-Factory</a> ·
-  <a href="https://typer.tiangolo.com/">Typer</a> ·
-  <a href="https://rich.readthedocs.io/">Rich</a> ·
-  <a href="https://github.com/tmbo/questionary">Questionary</a> ·
-  <a href="https://huggingface.co/">HuggingFace</a> ·
-  <a href="https://pytorch.org/">PyTorch</a>
+  <a href="https://github.com/hiyouga/LLaMA-Factory"><img src="https://img.shields.io/badge/LLaMA--Factory-fine--tuning-orange" alt="LLaMA-Factory"></a>
+  <a href="https://typer.tiangolo.com/"><img src="https://img.shields.io/badge/Typer-CLI-black" alt="Typer"></a>
+  <a href="https://rich.readthedocs.io/"><img src="https://img.shields.io/badge/Rich-terminal-cyan" alt="Rich"></a>
+  <a href="https://github.com/tmbo/questionary"><img src="https://img.shields.io/badge/Questionary-prompts-purple" alt="Questionary"></a>
+  <a href="https://huggingface.co/"><img src="https://img.shields.io/badge/%F0%9F%A4%97-HuggingFace-yellow" alt="HuggingFace"></a>
+  <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-deep%20learning-red" alt="PyTorch"></a>
 </p>
 
 ---
