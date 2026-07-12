@@ -14,14 +14,13 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import (
-    BUNDLED_DATA_DIR,
-    BUNDLED_DATASET_INFO,
     CONFIGS_DIR,
     DATASET_INFO,
     DATA_DIR,
     MODELS_DIR,
     PROJECT_ROOT,
     SAVES_DIR,
+    YAML_DIR,
 )
 from .hf import download_model, download_dataset, download_model_interactive, download_dataset_interactive
 from .bootstrap import run_bootstrap
@@ -29,16 +28,15 @@ from .logo import print_logo
 from .repro import gather_repro_metadata, format_repro_header
 from .prompts import (
     _count_dataset,
-    _count_demo_dataset,
     _list_cached_models,
     _list_datasets,
-    _list_demo_datasets,
     detect_template,
     prompt_chat_model,
     prompt_dataset,
     prompt_finetuning_type,
     prompt_model,
     prompt_stage,
+    prompt_target_loss,
     prompt_training_params,
 )
 from .runner import run_export, run_training
@@ -57,6 +55,7 @@ _verbose = False
 MAIN_MENU = [
     questionary.Choice(title="  Quick Train", value="quick_train"),
     questionary.Choice(title="  Advanced Training", value="advanced_train"),
+    questionary.Choice(title="  Train from YAML", value="yaml_train"),
     questionary.Choice(title="  Chat Trained Model", value="chat_trained"),
     questionary.Choice(title="  Quick Chat", value="quick_chat"),
     questionary.Choice(title="  Download Model", value="download_model"),
@@ -64,7 +63,6 @@ MAIN_MENU = [
     questionary.Choice(title="  Export Adapter", value="export"),
     questionary.Choice(title="  View Models", value="view_models"),
     questionary.Choice(title="  View Datasets", value="view_datasets"),
-    questionary.Choice(title="  Demo Datasets", value="demo_datasets"),
     questionary.Choice(title="  Add Dataset", value="add_dataset"),
     questionary.Choice(title="  Workspace Info", value="workspace_info"),
     questionary.Choice(title="  System Check", value="system_check"),
@@ -129,7 +127,7 @@ def _compute_dtype_flags():
         return {"bf16": False}
 
 
-def _build_config(model, template, dataset, epochs, finetuning_type, params, output_name):
+def _build_config(model, template, dataset, epochs, finetuning_type, params, output_name, target_loss=None):
     config = {
         "model_name_or_path": model,
         "template": template,
@@ -155,6 +153,10 @@ def _build_config(model, template, dataset, epochs, finetuning_type, params, out
         config["gradient_accumulation_steps"] = params.get("grad_accum", 8)
         config["cutoff_len"] = params.get("cutoff_len", 512)
         config["warmup_ratio"] = params.get("warmup_ratio", 0.1)
+
+    if target_loss is not None:
+        config["save_steps"] = 1
+        config["logging_steps"] = 1
 
     return config
 
@@ -187,7 +189,7 @@ def _record_training(output_name, model, dataset, stage, epochs, template):
         pass
 
 
-def _write_config_and_train(console, config, output_name, command="train", **cli_args):
+def _write_config_and_train(console, config, output_name, command="train", target_loss=None, **cli_args):
     os.makedirs(CONFIGS_DIR, exist_ok=True)
     config_path = os.path.join(CONFIGS_DIR, f"llamacli_{output_name}.yaml")
 
@@ -203,7 +205,7 @@ def _write_config_and_train(console, config, output_name, command="train", **cli
         f.write(header)
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
     console.print(f"\n[dim]Config saved: {config_path}[/]")
-    return run_training(console, config_path, output_name)
+    return run_training(console, config_path, output_name, target_loss=target_loss)
 
 
 def quick_train(console):
@@ -227,14 +229,20 @@ def quick_train(console):
         console.print("[yellow]Invalid, using 3.0[/]")
         epochs = 3.0
 
-    config = _build_config(model, template, dataset, epochs, "lora", {}, "")
+    target_loss = prompt_target_loss(console)
+
+    config = _build_config(model, template, dataset, epochs, "lora", {}, "", target_loss=target_loss)
     console.print("\n[dim]Using smart defaults: LoRA rank=8, LR=1e-4, batch=2, cutoff=512[/]")
+    if target_loss is not None:
+        console.print("[dim]Target-loss mode: save_steps=1, logging_steps=1 for precise checkpointing.[/]")
     table = Table(title="Quick Train Configuration", show_header=False, border_style="white")
     table.add_column("Key", style="bold white", width=22)
     table.add_column("Value", style="white")
     for k in ("model_name_or_path", "template", "dataset", "num_train_epochs",
               "finetuning_type", "lora_rank", "learning_rate", "cutoff_len"):
         table.add_row(k, str(config.get(k, "")))
+    if target_loss is not None:
+        table.add_row("target_loss", str(target_loss))
     console.print(table)
 
     try:
@@ -249,6 +257,7 @@ def quick_train(console):
     success = _write_config_and_train(
         console, config, output_name,
         command="quick_train",
+        target_loss=target_loss,
         model=model, template=template, dataset=dataset, epochs=epochs,
     )
     if success:
@@ -287,14 +296,18 @@ def advanced_train(console):
         console.print("[dim]Cancelled.[/]")
         return
 
+    target_loss = prompt_target_loss(console)
+
     output_name = console.input(
         f"[dim]Output name (default: run_{datetime.now().strftime('%Y%m%d_%H%M%S')}): [/]"
     ).strip()
     if not output_name:
         output_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    config = _build_config(model, template, dataset, params.get("epochs", 3), finetuning_type, params, output_name)
+    config = _build_config(model, template, dataset, params.get("epochs", 3), finetuning_type, params, output_name, target_loss=target_loss)
     config["stage"] = stage
+    if target_loss is not None:
+        console.print("[dim]Target-loss mode: save_steps=1, logging_steps=1 for precise checkpointing.[/]")
 
     table = Table(title="Confirm Training Configuration", show_header=False, border_style="white")
     table.add_column("Key", style="bold white", width=22)
@@ -314,6 +327,7 @@ def advanced_train(console):
     success = _write_config_and_train(
         console, config, output_name,
         command="advanced_train",
+        target_loss=target_loss,
         model=model, template=template, dataset=dataset, stage=stage,
         finetuning_type=finetuning_type, epochs=params.get("epochs", 3),
     )
@@ -434,6 +448,58 @@ def _start_chat(console, model, adapter, template):
             console.print(f"\n[red]Error during generation: {e}[/]")
 
 
+def yaml_train_screen(console):
+    console.print("\n[bold white]Train from YAML[/bold white]\n")
+    if not os.path.isdir(YAML_DIR):
+        os.makedirs(YAML_DIR, exist_ok=True)
+        console.print(f"[dim]Created {YAML_DIR}[/]")
+
+    yaml_files = [f for f in sorted(os.listdir(YAML_DIR)) if f.endswith((".yaml", ".yml"))]
+    if not yaml_files:
+        console.print("[yellow]No YAML configs found.[/]")
+        console.print(f"[dim]Drop saved .yaml configs into {YAML_DIR} to train from them.[/]")
+        return
+
+    choices = []
+    for f in yaml_files:
+        choices.append(questionary.Choice(title=f"  {f}", value=os.path.join(YAML_DIR, f)))
+    choices.append(questionary.Choice(title="  Custom path...", value="__custom__"))
+
+    try:
+        selected = questionary.select(
+            "Select a YAML config:",
+            choices=choices,
+            pointer=">",
+            use_arrow_keys=True,
+            use_jk_keys=True,
+        ).ask()
+    except (KeyboardInterrupt, EOFError):
+        return
+
+    if not selected:
+        return
+    if selected == "__custom__":
+        path = console.input("[dim]Path to YAML config: [/]").strip()
+        if not path:
+            console.print("[dim]Cancelled.[/]")
+            return
+        selected = path
+
+    output_name = console.input(
+        f"[dim]Output name (default: run_{datetime.now().strftime('%Y%m%d_%H%M%S')}): [/]"
+    ).strip()
+    if not output_name:
+        output_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # For YAML training we run the YAML directly without rebuilding a config
+    console.print("\n[dim]Training directly from saved YAML.[/]")
+    success = run_training(console, selected, output_name)
+    if success:
+        console.print(f"\n[green]Training complete! Output: saves/{output_name}/lora[/]")
+    else:
+        console.print("\n[red]Training failed.[/]")
+
+
 def view_models_screen(console):
     models = _list_cached_models()
     state = get_state()
@@ -486,37 +552,6 @@ def view_datasets_screen(console):
         mark = " *" if d["name"] == state.active_dataset else ""
         cnt = _count_dataset(d["name"])
         table.add_row(str(i), d["name"] + mark, str(cnt), d["format"], d.get("source", "-"))
-    console.print(table)
-
-    try:
-        choice = console.input("\n[dim]Set active dataset # (or Enter to skip): [/]").strip()
-        if choice.isdigit():
-            idx = int(choice) - 1
-            if 0 <= idx < len(datasets):
-                state.active_dataset = datasets[idx]["name"]
-                state.save()
-                console.print(f"[green]Active dataset: {state.active_dataset}[/]")
-    except (KeyboardInterrupt, EOFError):
-        pass
-
-
-def view_demo_datasets_screen(console):
-    datasets = _list_demo_datasets()
-    state = get_state()
-    console.print(f"\n[bold white]Demo Datasets ({len(datasets)})[/bold white]\n")
-    if not datasets:
-        console.print("[dim]No demo datasets are bundled with this install.[/]")
-        return
-
-    table = Table(show_header=True, header_style="bold white", border_style="white")
-    table.add_column("#", style="dim", width=4)
-    table.add_column("Dataset", style="white")
-    table.add_column("Examples", style="dim", width=10)
-    table.add_column("Format", style="dim", width=10)
-    for i, d in enumerate(datasets, 1):
-        mark = " *" if d["name"] == state.active_dataset else ""
-        cnt = _count_demo_dataset(d["name"])
-        table.add_row(str(i), d["name"] + mark, str(cnt), d["format"])
     console.print(table)
 
     try:
@@ -641,10 +676,11 @@ def export_screen(console):
 
 
 def workspace_info_screen(console):
-    from . import PROJECT_ROOT, DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR
+    from . import PROJECT_ROOT, DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR, YAML_DIR
     console.print("\n[bold white]Workspace Info[/bold white]\n")
     console.print(f"[bold]Project root:[/] [dim]{PROJECT_ROOT}[/]")
     console.print(f"[bold]Data dir:[/]    [dim]{DATA_DIR}[/]")
+    console.print(f"[bold]YAML dir:[/]    [dim]{YAML_DIR}[/]")
     console.print(f"[bold]Saves dir:[/]   [dim]{SAVES_DIR}[/]")
     console.print(f"[bold]Models dir:[/] [dim]{MODELS_DIR}[/]")
     console.print(f"[bold]Configs dir:[/] [dim]{CONFIGS_DIR}[/]")
@@ -656,6 +692,7 @@ def workspace_info_screen(console):
 
     for label, path in [
         ("data/", DATA_DIR),
+        ("yaml/", YAML_DIR),
         ("saves/", SAVES_DIR),
         ("models/", MODELS_DIR),
         ("configs/", CONFIGS_DIR),
@@ -730,8 +767,8 @@ def system_check_screen(console):
     except ImportError:
         table.add_row("GPU (CUDA/MPS)", "[yellow]UNKNOWN[/]", "torch not installed")
 
-    from . import DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR
-    for name, d in [("data/", DATA_DIR), ("saves/", SAVES_DIR), ("models/", MODELS_DIR), ("configs/", CONFIGS_DIR)]:
+    from . import DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR, YAML_DIR
+    for name, d in [("data/", DATA_DIR), ("yaml/", YAML_DIR), ("saves/", SAVES_DIR), ("models/", MODELS_DIR), ("configs/", CONFIGS_DIR)]:
         exists = os.path.isdir(d)
         if not exists:
             os.makedirs(d, exist_ok=True)
@@ -742,9 +779,9 @@ def system_check_screen(console):
 
 
 def _ensure_directories():
-    from . import CONFIGS_DIR, DATA_DIR, MODELS_DIR, SAVES_DIR, DATASET_INFO
+    from . import CONFIGS_DIR, DATA_DIR, MODELS_DIR, SAVES_DIR, DATASET_INFO, YAML_DIR
 
-    for d in (DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR):
+    for d in (DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR, YAML_DIR):
         os.makedirs(d, exist_ok=True)
 
     readme_path = os.path.join(DATA_DIR, "README.txt")
@@ -757,10 +794,10 @@ def _ensure_directories():
             f.write("  - .jsonl (one JSON object per line)\n")
             f.write("\n")
             f.write("Alpaca format (auto-detected):\n")
-            f.write('  [{"instruction": "...", "input": "...", "output": "..."}]\n')
+            f.write('[{"instruction": "...", "input": "...", "output": "..."}]\n')
             f.write("\n")
             f.write("ShareGPT format (auto-detected):\n")
-            f.write('  [{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}]\n')
+            f.write('[{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}]\n')
             f.write("\n")
             f.write("Files dropped here appear in the dataset dropdown automatically.\n")
 
@@ -788,6 +825,9 @@ def interactive_loop():
             elif choice == "advanced_train":
                 advanced_train(console)
                 console.input("\n[dim]Press Enter to return to menu...[/]")
+            elif choice == "yaml_train":
+                yaml_train_screen(console)
+                console.input("\n[dim]Press Enter to return to menu...[/]")
             elif choice == "chat_trained":
                 chat_trained(console)
                 console.input("\n[dim]Press Enter to return to menu...[/]")
@@ -808,9 +848,6 @@ def interactive_loop():
                 console.input("\n[dim]Press Enter to return to menu...[/]")
             elif choice == "view_datasets":
                 view_datasets_screen(console)
-                console.input("\n[dim]Press Enter to return to menu...[/]")
-            elif choice == "demo_datasets":
-                view_demo_datasets_screen(console)
                 console.input("\n[dim]Press Enter to return to menu...[/]")
             elif choice == "add_dataset":
                 add_dataset_screen(console)
@@ -864,13 +901,6 @@ def main(
         except Exception:
             pass
 
-    from .workspace import sync_demo_datasets
-    sync_demo_datasets(
-        BUNDLED_DATA_DIR,
-        BUNDLED_DATASET_INFO,
-        DATA_DIR,
-        DATASET_INFO,
-    )
     if version:
         from . import PROJECT_ROOT
         console.print(f"[white]llamacli[/] [bold]{PROJECT_ROOT}[/]")
@@ -919,6 +949,7 @@ def train(
     warmup: float = typer.Option(0.1, "--warmup", help="Warmup ratio"),
     scheduler: str = typer.Option("cosine", "--scheduler", help="LR scheduler type (cosine/linear/constant)"),
     method: str = typer.Option("lora", "--method", help="Finetuning method: lora/full/freeze"),
+    target_loss: float = typer.Option(None, "--target-loss", help="Stop training when loss reaches approximately this value"),
 ):
     output_name = output or f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     config = {
@@ -950,6 +981,9 @@ def train(
         "warmup_ratio": warmup,
         **_compute_dtype_flags(),
     }
+    if target_loss is not None:
+        config["save_steps"] = 1
+        config["logging_steps"] = 1
     if resume:
         config["resume_from_checkpoint"] = resume
     if force:
@@ -974,6 +1008,7 @@ def train(
     success = _write_config_and_train(
         console, config, output_name,
         command="train",
+        target_loss=target_loss,
         **extra_args,
     )
     if success:
@@ -1127,6 +1162,33 @@ def export(
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
     run_export(console, config_path)
+
+
+@app.command("yaml-train")
+def yaml_train(
+    config: str = typer.Argument(..., help="Path to YAML config, or filename inside yaml/"),
+    output: str = typer.Option("", "--output", "-o", help="Output name"),
+):
+    """Train a model from an existing YAML config file."""
+    # Resolve path
+    candidate = os.path.join(YAML_DIR, config)
+    if os.path.isfile(candidate):
+        config_path = candidate
+    elif os.path.isfile(config):
+        config_path = config
+    else:
+        console.print(f"[red]YAML config not found: {config}[/]")
+        console.print(f"[dim]Searched: {os.path.abspath(config)} and {os.path.abspath(candidate)}[/]")
+        raise typer.Exit(1)
+
+    output_name = output or f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    console.print(f"[dim]Training from YAML: {config_path}[/]")
+    success = run_training(console, config_path, output_name)
+    if success:
+        console.print(f"\n[green]Training complete! Output: saves/{output_name}/lora[/]")
+    else:
+        console.print("\n[red]Training failed.[/]")
+        raise typer.Exit(1)
 
 
 @app.command()
@@ -1319,6 +1381,7 @@ def info(
     dirs_info = {}
     for label, path in [
         ("data", DATA_DIR),
+        ("yaml", YAML_DIR),
         ("saves", SAVES_DIR),
         ("models", MODELS_DIR),
         ("configs", CONFIGS_DIR),

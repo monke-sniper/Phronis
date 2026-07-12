@@ -22,7 +22,7 @@ class TestWriteConfigAndTrain:
             llamacli.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
-            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o: True)
+            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
 
             try:
                 config = {
@@ -66,7 +66,7 @@ class TestWriteConfigAndTrain:
             llamacli.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
-            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o: True)
+            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
 
             try:
                 config = {"seed": 42}
@@ -91,7 +91,7 @@ class TestWriteConfigAndTrain:
             llamacli.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
-            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o: True)
+            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
 
             try:
                 # quick_train historically passed an empty output_name to _build_config,
@@ -123,7 +123,7 @@ class TestTyperTrainCommand:
             llamacli.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
-            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o: True)
+            monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
             monkeypatch.setattr(cli_mod, "_record_training", lambda *a, **k: None)
 
             runner = CliRunner()

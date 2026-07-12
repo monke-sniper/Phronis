@@ -16,7 +16,7 @@ class TestDemoDatasetHelpers:
         datasets = _list_demo_datasets()
         assert isinstance(datasets, list)
         names = [d["name"] for d in datasets]
-        assert "identity" in names
+        assert "demo_alpaca" in names
         assert "demo_chat" in names
 
     def test_demo_datasets_have_required_keys(self):
@@ -38,54 +38,6 @@ class TestDemoDatasetHelpers:
     def test_count_nonexistent_demo_dataset(self):
         from llamacli.prompts import _count_demo_dataset
         assert _count_demo_dataset("__missing__") == 0
-
-
-class TestViewDemoDatasetsScreen:
-    def test_shows_demo_datasets(self, monkeypatch):
-        import llamacli.state as state_mod
-        import llamacli.cli as cli_mod
-
-        fd, temp_state = tempfile.mkstemp(suffix=".yaml")
-        os.close(fd)
-        old_path = state_mod.STATE_PATH
-        state_mod.STATE_PATH = temp_state
-        state_mod._state = None
-
-        try:
-            console = _dummy_console()
-            monkeypatch.setattr(console, "input", lambda prompt: "")
-            cli_mod.view_demo_datasets_screen(console)
-            text = console.file.getvalue()
-            assert "Demo Datasets" in text
-            assert "identity" in text
-            assert "demo_chat" in text
-        finally:
-            state_mod.STATE_PATH = old_path
-            state_mod._state = None
-            if os.path.exists(temp_state):
-                os.unlink(temp_state)
-
-    def test_can_set_active_dataset(self, monkeypatch):
-        import llamacli.state as state_mod
-        import llamacli.cli as cli_mod
-
-        fd, temp_state = tempfile.mkstemp(suffix=".yaml")
-        os.close(fd)
-        old_path = state_mod.STATE_PATH
-        state_mod.STATE_PATH = temp_state
-        state_mod._state = None
-
-        try:
-            console = _dummy_console()
-            monkeypatch.setattr(console, "input", lambda prompt: "1")
-            cli_mod.view_demo_datasets_screen(console)
-            state = state_mod.get_state()
-            assert state.active_dataset in ("identity", "demo_chat")
-        finally:
-            state_mod.STATE_PATH = old_path
-            state_mod._state = None
-            if os.path.exists(temp_state):
-                os.unlink(temp_state)
 
 
 class TestPromptDatasetFallback:

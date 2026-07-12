@@ -57,6 +57,12 @@ class TestBuildConfig:
         assert config["finetuning_type"] == "freeze"
         assert "lora_rank" not in config
 
+    def test_target_loss_sets_save_and_logging_steps(self):
+        from llamacli.cli import _build_config
+        config = _build_config("m", "t", "d", 3.0, "lora", {}, "run", target_loss=0.9)
+        assert config["save_steps"] == 1
+        assert config["logging_steps"] == 1
+
 
 class TestRecordTraining:
     def test_records_training_history(self):
@@ -217,6 +223,7 @@ class TestMainMenu:
         values = [c.value for c in MAIN_MENU]
         assert "quick_train" in values
         assert "advanced_train" in values
+        assert "yaml_train" in values
         assert "chat_trained" in values
         assert "quick_chat" in values
         assert "download_model" in values
@@ -224,7 +231,6 @@ class TestMainMenu:
         assert "export" in values
         assert "view_models" in values
         assert "view_datasets" in values
-        assert "demo_datasets" in values
         assert "add_dataset" in values
         assert "workspace_info" in values
         assert "system_check" in values

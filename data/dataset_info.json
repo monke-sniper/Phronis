@@ -1,0 +1,18 @@
+{
+  "demo_alpaca": {
+    "file_name": "demo_alpaca.json",
+    "formatting": "alpaca"
+  },
+  "demo_chat": {
+    "file_name": "demo_chat.json",
+    "formatting": "sharegpt"
+  },
+  "my_test": {
+    "file_name": "my_test.json",
+    "formatting": "alpaca"
+  },
+  "my_hf": {
+    "hf_hub_url": "https://huggingface.co/datasets/test",
+    "formatting": "sharegpt"
+  }
+}

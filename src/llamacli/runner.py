@@ -1,4 +1,5 @@
 import ast
+import glob
 import os
 import re
 import shutil
@@ -7,6 +8,7 @@ import sys
 import threading
 import time
 
+import yaml
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -67,7 +69,7 @@ def _parse_metrics(raw_line):
     return None
 
 
-def _format_metrics(metrics, step_total, elapsed):
+def _format_metrics(metrics, step_total, elapsed, target_loss=None, best_loss=None, patience_counter=0, patience_limit=0):
     parts = []
     current, maximum = (
         step_total if isinstance(step_total, tuple) else (step_total, 0)
@@ -82,25 +84,115 @@ def _format_metrics(metrics, step_total, elapsed):
         if epoch:
             parts.append(f"Epoch {epoch}")
         loss = metrics.get("loss")
-        if loss:
-            parts.append(f"Loss {loss}")
+        if loss is not None:
+            try:
+                parts.append(f"Loss {float(loss):.4f}")
+            except (ValueError, TypeError):
+                parts.append(f"Loss {loss}")
         gn = metrics.get("grad_norm")
         if gn:
-            parts.append(f"GNorm {gn}")
+            try:
+                parts.append(f"GNorm {float(gn):.4f}")
+            except (ValueError, TypeError):
+                parts.append(f"GNorm {gn}")
         lr = metrics.get("learning_rate")
         if lr:
             parts.append(f"LR {lr}")
+    if target_loss is not None:
+        parts.append(f"Target {target_loss}")
+        if best_loss is not None:
+            parts.append(f"Best {best_loss:.4f}")
+        if patience_limit > 0:
+            parts.append(f"Patience {patience_counter}/{patience_limit}")
     parts.append(f"Time {elapsed:.0f}s")
     return "  |  ".join(parts)
 
 
-def run_training(console: Console, config_path: str, output_name: str):
+def _loss_within_target(loss, target):
+    """Return True if loss is at or below the target within a small margin."""
+    if loss is None or target is None:
+        return False
+    margin = max(0.02, abs(target) * 0.05)
+    return loss <= (target + margin)
+
+
+def _find_checkpoints(output_dir):
+    """Return a dict mapping step int -> checkpoint dir path."""
+    pattern = os.path.join(output_dir, "checkpoint-*")
+    checkpoints = {}
+    for path in glob.glob(pattern):
+        name = os.path.basename(path)
+        m = re.search(r"checkpoint-(\d+)", name)
+        if m:
+            checkpoints[int(m.group(1))] = path
+    return checkpoints
+
+
+def _restore_checkpoint(console, output_dir, best_step, target_loss):
+    """Copy the checkpoint closest to best_step over the final output_dir contents."""
+    checkpoints = _find_checkpoints(output_dir)
+    if not checkpoints:
+        console.print("[yellow]No checkpoints found to restore.[/]")
+        return False
+
+    # Pick the highest checkpoint step <= best_step, or closest overall
+    candidates = [s for s in checkpoints if s <= best_step]
+    if candidates:
+        chosen_step = max(candidates)
+    else:
+        chosen_step = min(checkpoints.keys())
+
+    src = checkpoints[chosen_step]
+    console.print(
+        f"[dim]Restoring checkpoint {chosen_step} (best observed ~step {best_step}) => {output_dir}[/]"
+    )
+
+    # Remove existing adapter files in output_dir (keep checkpoint-* dirs)
+    for entry in os.listdir(output_dir):
+        full = os.path.join(output_dir, entry)
+        if os.path.isfile(full):
+            os.remove(full)
+        elif os.path.isdir(full) and not entry.startswith("checkpoint-"):
+            shutil.rmtree(full)
+
+    # Copy checkpoint contents into output_dir
+    for entry in os.listdir(src):
+        s = os.path.join(src, entry)
+        d = os.path.join(output_dir, entry)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, dirs_exist_ok=True)
+        else:
+            shutil.copy2(s, d)
+
+    console.print(f"[green]Restored checkpoint {chosen_step} as final adapter.[/]")
+    return True
+
+
+def run_training(console: Console, config_path: str, output_name: str, target_loss: float = None):
+    # Load config to find output_dir
+    cfg = {}
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+    except Exception:
+        pass
+    output_dir = cfg.get("output_dir", os.path.join("saves", output_name, "lora"))
+
     lines = []
     lock = threading.Lock()
     done = threading.Event()
     returncode = [None]
     step_counter = [0]
     total_steps = [0]
+
+    proc_ref = [None]
+
+    # Target-loss tracking
+    best_loss = [float("inf")]
+    best_step = [0]
+    patience_counter = [0]
+    patience_limit = 30  # logging steps after best loss to wait before stopping
+    target_hit = [False]
 
     def _stream():
         try:
@@ -112,6 +204,7 @@ def run_training(console: Console, config_path: str, output_name: str):
                 bufsize=1,
                 env={**os.environ, "PYTHONUNBUFFERED": "1"},
             )
+            proc_ref[0] = proc
             for line in proc.stdout:
                 stripped = line.rstrip()
                 if stripped:
@@ -155,8 +248,40 @@ def run_training(console: Console, config_path: str, output_name: str):
                     latest_metrics = parsed
                     break
 
+            # Target loss evaluation
+            if target_loss is not None:
+                loss = latest_metrics.get("loss")
+                if loss is not None:
+                    if _loss_within_target(loss, target_loss):
+                        if loss < best_loss[0]:
+                            best_loss[0] = loss
+                            best_step[0] = step_counter[0]
+                        patience_counter[0] = 0
+                        target_hit[0] = True
+                    else:
+                        if target_hit[0]:
+                            patience_counter[0] += 1
+                    # Stop if patience exceeded
+                    if target_hit[0] and patience_counter[0] > patience_limit:
+                        console.print(
+                            f"\n[yellow]Target loss {target_loss:.4f} reached (best {best_loss[0]:.4f}). "
+                            f"Patience exceeded ({patience_counter[0]} > {patience_limit}). Stopping...[/]"
+                        )
+                        if proc_ref[0] is not None:
+                            try:
+                                proc_ref[0].terminate()
+                            except Exception:
+                                pass
+                        break
+
             metrics_bar = _format_metrics(
-                latest_metrics, (step_counter[0], total_steps[0]), elapsed
+                latest_metrics,
+                (step_counter[0], total_steps[0]),
+                elapsed,
+                target_loss=target_loss,
+                best_loss=best_loss[0] if best_loss[0] != float("inf") else None,
+                patience_counter=patience_counter[0],
+                patience_limit=patience_limit if target_hit[0] else 0,
             )
             log_body = "\n".join(visible)
             content = metrics_bar + "\n" + "─" * 50 + "\n" + log_body
@@ -167,8 +292,26 @@ def run_training(console: Console, config_path: str, output_name: str):
                     border_style="white",
                 )
             )
+            time.sleep(0.12)
 
-    return returncode[0] == 0
+    # Wait for subprocess to finish if it didn't already
+    if not done.is_set() and proc_ref[0] is not None:
+        try:
+            proc_ref[0].wait(timeout=60)
+        except Exception:
+            pass
+        done.set()
+    thread.join(timeout=5)
+
+    success = returncode[0] == 0
+
+    # If we hit the target but stopped early, restore the best checkpoint
+    if target_loss is not None and target_hit[0] and success:
+        _restore_checkpoint(console, output_dir, best_step[0], target_loss)
+    elif target_loss is not None and not target_hit[0]:
+        console.print(f"[yellow]Target loss {target_loss:.4f} was not reached during training.[/]")
+
+    return success
 
 
 def run_export(console: Console, config_path: str):

@@ -57,11 +57,12 @@ class TestImports:
             interactive_loop,
             quick_train,
             advanced_train,
+            yaml_train,
+            yaml_train_screen,
             chat_trained,
             quick_chat,
             view_models_screen,
             view_datasets_screen,
-            view_demo_datasets_screen,
             add_dataset_screen,
             export_screen,
             show_main_menu,
@@ -77,7 +78,7 @@ class TestImports:
             if name == "add_dataset":
                 name = "add"
             registered.add(name)
-        expected = {"setup", "train", "chat", "export", "download", "list", "add", "info", "doctor", "update", "clean"}
+        expected = {"setup", "train", "chat", "export", "download", "list", "add", "info", "doctor", "update", "clean", "yaml-train"}
         for cmd in expected:
             assert cmd in registered, f"'{cmd}' not registered in Typer app"
 

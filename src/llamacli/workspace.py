@@ -10,19 +10,23 @@ CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".llamaworkspace", "workspac
 GUIDE_CONTENT = """# llamacli Guide
 
 ## Workspace
-Your workspace is the central location for all llamacli files.
+Your workspace is the central location for all llamacli output files (saves, models, configs).
 Default: ~/.llamaworkspace/
 
 ### Structure
     ~/.llamaworkspace/
     ├── workspace.yaml      # workspace config
     ├── .llamacli.yaml      # app state
-    ├── data/               # datasets (auto-detected)
-    │   ├── dataset_info.json
-    │   └── README.txt
     ├── saves/              # LoRA adapters + checkpoints
     ├── models/             # exported / merged models
     └── configs/            # auto-generated YAML from training runs
+
+## Central Data Directories (repo-level)
+    <repo_root>/
+    ├── data/               # ONE central data folder — drop datasets here
+    │   ├── dataset_info.json
+    │   └── README.txt
+    └── yaml/               # saved YAML training configs
 
 ## How to Change Workspace Location
 Edit workspace.yaml:
@@ -35,38 +39,42 @@ Or set environment variable:
 
 ### 1. Quick Train
 Fine-tune in 3 prompts. Picks model, dataset, epochs. Uses smart defaults.
+Supports optional target-loss training.
 
 ### 2. Advanced Training
-Full control over all hyperparameters.
+Full control over all hyperparameters plus optional target-loss training.
 
-### 3. Chat Trained Model
+### 3. Train from YAML
+Select a saved YAML config from the central yaml/ folder and train directly.
+
+### 4. Chat Trained Model
 Instantly chat with your last fine-tune.
 
-### 4. Quick Chat
+### 5. Quick Chat
 Chat with any cached model.
 
-### 5. Download Model
+### 6. Download Model
 Search and download models from HuggingFace. Shows file sizes and progress.
 
-### 6. Download Dataset
+### 7. Download Dataset
 Search and download datasets from HuggingFace. Auto-detects format.
 
-### 7. Export Adapter
+### 8. Export Adapter
 Merge LoRA adapter into a standalone model.
 
-### 8. View Models
+### 9. View Models
 Browse your cached models. Set active model.
 
-### 9. View Datasets
+### 10. View Datasets
 Browse available datasets. Set active dataset.
 
-### 10. Add Dataset
+### 11. Add Dataset
 Register a dataset manually (local file or HuggingFace URL).
 
-### 11. Workspace Info
+### 12. Workspace Info
 Show workspace location, directory sizes, and file counts.
 
-### 12. System Check
+### 13. System Check
 Verify Python, LLaMA-Factory, GPU, and workspace setup.
 
 ## Dataset Formats
@@ -95,6 +103,8 @@ Each training run produces a YAML config in configs/.
 You can manually edit these YAMLs to customize training.
 The configs are modular - each run has its own file.
 
+Saved YAML configs can be placed in yaml/ and selected via "Train from YAML".
+
 ## CLI Commands
 
 ### Interactive
@@ -110,6 +120,8 @@ The configs are modular - each run has its own file.
     llamacli train --model X --dataset Y --scheduler cosine --warmup 0.1
     llamacli train --model X --dataset Y --force          # overwrite output dir
     llamacli train --model X --dataset Y --push-to-hub    # upload after training
+    llamacli train --model X --dataset Y --target-loss 0.9  # stop at loss ~0.9
+    llamacli yaml-train /path/to/config.yaml             # train from YAML file
 
 ### Chat
     llamacli chat                         # interactive chat with active model
@@ -189,24 +201,12 @@ def set_workspace_path(path):
 
 def ensure_workspace_dirs(workspace_path):
     dirs = {
-        "data": os.path.join(workspace_path, "data"),
         "saves": os.path.join(workspace_path, "saves"),
         "models": os.path.join(workspace_path, "models"),
         "configs": os.path.join(workspace_path, "configs"),
     }
     for d in dirs.values():
         os.makedirs(d, exist_ok=True)
-
-    readme_path = os.path.join(dirs["data"], "README.txt")
-    if not os.path.isfile(readme_path):
-        with open(readme_path, "w", encoding="utf-8") as f:
-            f.write("Place your training datasets here.\n")
-            f.write("Supported: .json (alpaca/sharegpt), .jsonl\n")
-
-    dataset_info = os.path.join(dirs["data"], "dataset_info.json")
-    if not os.path.isfile(dataset_info):
-        with open(dataset_info, "w", encoding="utf-8") as f:
-            json.dump({}, f, indent=2)
 
     guide_path = os.path.join(workspace_path, "GUIDE.md")
     if not os.path.isfile(guide_path):
@@ -223,39 +223,5 @@ def init_workspace():
 
 
 def sync_demo_datasets(bundled_data_dir, bundled_dataset_info, data_dir, dataset_info_path):
-    """Copy bundled demo datasets into the workspace so LLaMA-Factory can use them.
-
-    This is called at startup and whenever a new venv is created. It copies
-    any bundled dataset files that are missing or newer in the workspace,
-    and merges their metadata into the workspace ``dataset_info.json``.
-    """
-    if not os.path.isdir(bundled_data_dir) or not os.path.isfile(bundled_dataset_info):
-        return
-
-    with open(bundled_dataset_info, "r", encoding="utf-8") as f:
-        bundled_registry = json.load(f)
-
-    workspace_registry = {}
-    if os.path.isfile(dataset_info_path):
-        try:
-            with open(dataset_info_path, "r", encoding="utf-8") as f:
-                workspace_registry = json.load(f) or {}
-        except (json.JSONDecodeError, OSError):
-            workspace_registry = {}
-
-    changed = False
-    for name, info in bundled_registry.items():
-        file_name = info.get("file_name", f"{name}.json")
-        src = os.path.join(bundled_data_dir, file_name)
-        dst = os.path.join(data_dir, file_name)
-        if os.path.isfile(src):
-            if not os.path.isfile(dst) or os.path.getmtime(src) > os.path.getmtime(dst):
-                shutil.copy2(src, dst)
-                changed = True
-        if name not in workspace_registry:
-            workspace_registry[name] = info
-            changed = True
-
-    if changed:
-        with open(dataset_info_path, "w", encoding="utf-8") as f:
-            json.dump(workspace_registry, f, indent=2, ensure_ascii=False)
+    """No-op: data is now centrally managed in the repo root data/ folder."""
+    pass

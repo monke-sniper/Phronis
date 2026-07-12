@@ -605,6 +605,21 @@ def _input_float(console, label, default):
         return default
 
 
+def prompt_target_loss(console: Console):
+    val = console.input("[dim]Target loss (optional, e.g. 0.9 1.0 2.5; Enter to skip): [/]").strip()
+    if not val:
+        return None
+    try:
+        target = float(val)
+        if target <= 0:
+            console.print("[yellow]Target loss must be positive, skipping.[/]")
+            return None
+        return target
+    except ValueError:
+        console.print("[yellow]Invalid target loss, skipping.[/]")
+        return None
+
+
 def prompt_chat_model(console: Console):
     models = _list_cached_models()
     adapter_map = {}
