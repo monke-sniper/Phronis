@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-import llamacli.cli as cli_mod
+import phronis.cli as cli_mod
 
 
 def _fake_confirm_yes(*a, **k):
@@ -43,7 +43,7 @@ class TestNegativePaths:
         assert not os.listdir(configs_dir)
 
     def test_failed_run_does_not_record_history(self, temp_workspace, mock_console, monkeypatch):
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
 
         monkeypatch.setattr(cli_mod, "prompt_model", lambda c, **kw: ("m", "t"))
         monkeypatch.setattr(cli_mod, "prompt_dataset", lambda c, **kw: "ds")

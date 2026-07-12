@@ -4,19 +4,19 @@ import json
 import os
 import yaml
 
-DEFAULT_WORKSPACE = os.path.join(os.path.expanduser("~"), ".llamaworkspace")
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".llamaworkspace", "workspace.yaml")
+DEFAULT_WORKSPACE = os.path.join(os.path.expanduser("~"), ".phronisworkspace")
+CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".phronisworkspace", "workspace.yaml")
 
-GUIDE_CONTENT = """# llamacli Guide
+GUIDE_CONTENT = """# phronis Guide
 
 ## Workspace
-Your workspace is the central location for all llamacli output files (saves, models, configs).
-Default: ~/.llamaworkspace/
+Your workspace is the central location for all phronis output files (saves, models, configs).
+Default: ~/.phronisworkspace/
 
 ### Structure
-    ~/.llamaworkspace/
+    ~/.phronisworkspace/
     ├── workspace.yaml      # workspace config
-    ├── .llamacli.yaml      # app state
+    ├── .phronis.yaml      # app state
     ├── saves/              # LoRA adapters + checkpoints
     ├── models/             # exported / merged models
     └── configs/            # auto-generated YAML from training runs
@@ -33,7 +33,7 @@ Edit workspace.yaml:
     workspace_path: /your/custom/path
 
 Or set environment variable:
-    LLAMACLII_WORKSPACE=/your/custom/path
+    PHRONIS_WORKSPACE=/your/custom/path
 
 ## Menu Options
 
@@ -108,73 +108,73 @@ Saved YAML configs can be placed in yaml/ and selected via "Train from YAML".
 ## CLI Commands
 
 ### Interactive
-    llamacli                              # launch interactive menu
-    llamacli --version                    # show version
-    llamacli --help                       # show all commands
+    phronis                              # launch interactive menu
+    phronis --version                    # show version
+    phronis --help                       # show all commands
 
 ### Training
-    llamacli train --model X --dataset Y  # direct training
-    llamacli train --model X --dataset Y --dry-run    # print config, don't train
-    llamacli train --model X --dataset Y --resume /path/to/checkpoint
-    llamacli train --model X --dataset Y --method lora --grad-accum 8
-    llamacli train --model X --dataset Y --scheduler cosine --warmup 0.1
-    llamacli train --model X --dataset Y --force          # overwrite output dir
-    llamacli train --model X --dataset Y --push-to-hub    # upload after training
-    llamacli train --model X --dataset Y --target-loss 0.9  # stop at loss ~0.9
-    llamacli yaml-train /path/to/config.yaml             # train from YAML file
+    phronis train --model X --dataset Y  # direct training
+    phronis train --model X --dataset Y --dry-run    # print config, don't train
+    phronis train --model X --dataset Y --resume /path/to/checkpoint
+    phronis train --model X --dataset Y --method lora --grad-accum 8
+    phronis train --model X --dataset Y --scheduler cosine --warmup 0.1
+    phronis train --model X --dataset Y --force          # overwrite output dir
+    phronis train --model X --dataset Y --push-to-hub    # upload after training
+    phronis train --model X --dataset Y --target-loss 0.9  # stop at loss ~0.9
+    phronis yaml-train /path/to/config.yaml             # train from YAML file
 
 ### Chat
-    llamacli chat                         # interactive chat with active model
-    llamacli chat --model X --message "Hello"          # single-shot response
-    llamacli chat --model X --adapter Y --message "Hi"   # chat with adapter
+    phronis chat                         # interactive chat with active model
+    phronis chat --model X --message "Hello"          # single-shot response
+    phronis chat --model X --adapter Y --message "Hi"   # chat with adapter
 
 ### Export
-    llamacli export --adapter saves/run/lora           # merge adapter
-    llamacli export --adapter saves/run/lora --output models/my_model
+    phronis export --adapter saves/run/lora           # merge adapter
+    phronis export --adapter saves/run/lora --output models/my_model
 
 ### Download
-    llamacli download model Qwen/Qwen3-0.6B             # download a model
-    llamacli download dataset tatsu-lab/alpaca          # download a dataset
-    llamacli download model Qwen/Qwen3-0.6B --no-confirm # skip confirmation
+    phronis download model Qwen/Qwen3-0.6B             # download a model
+    phronis download dataset tatsu-lab/alpaca          # download a dataset
+    phronis download model Qwen/Qwen3-0.6B --no-confirm # skip confirmation
 
 ### List
-    llamacli list models                  # list cached models
-    llamacli list datasets                # list available datasets
-    llamacli list history                 # list training runs
-    llamacli list adapters                # list LoRA adapters
-    llamacli list models --json           # output as JSON
+    phronis list models                  # list cached models
+    phronis list datasets                # list available datasets
+    phronis list history                 # list training runs
+    phronis list adapters                # list LoRA adapters
+    phronis list models --json           # output as JSON
 
 ### Add Dataset
-    llamacli add dataset --name my_data --file my_data.json --format alpaca
-    llamacli add dataset --name my_data --hf-url https://huggingface.co/datasets/... --format sharegpt
+    phronis add dataset --name my_data --file my_data.json --format alpaca
+    phronis add dataset --name my_data --hf-url https://huggingface.co/datasets/... --format sharegpt
 
 ### Workspace
-    llamacli info                         # show workspace info and disk usage
-    llamacli info --json                    # output as JSON
-    llamacli doctor                       # full system diagnostic
-    llamacli doctor --fix                 # auto-fix missing dependencies
-    llamacli clean configs                # delete old config files
-    llamacli clean all --force            # delete everything (no confirmation)
+    phronis info                         # show workspace info and disk usage
+    phronis info --json                    # output as JSON
+    phronis doctor                       # full system diagnostic
+    phronis doctor --fix                 # auto-fix missing dependencies
+    phronis clean configs                # delete old config files
+    phronis clean all --force            # delete everything (no confirmation)
 
 ### Maintenance
-    llamacli setup                        # run setup/health check
-    llamacli update                       # self-update via pip
-    llamacli update --check               # check for updates only
+    phronis setup                        # run setup/health check
+    phronis update                       # self-update via pip
+    phronis update --check               # check for updates only
 
 ### Global Flags
-    llamacli --workspace /path/to/custom  # override workspace directory
-    llamacli --no-color                   # disable colored output
-    llamacli --quiet                      # suppress non-essential output
-    llamacli --verbose                    # verbose/debug output
+    phronis --workspace /path/to/custom  # override workspace directory
+    phronis --no-color                   # disable colored output
+    phronis --quiet                      # suppress non-essential output
+    phronis --verbose                    # verbose/debug output
 
 ## Environment Variables
-    LLAMACLII_WORKSPACE   # override workspace location
+    PHRONIS_WORKSPACE   # override workspace location
     HF_HOME               # HuggingFace cache location
 """
 
 
 def get_workspace_path():
-    if env_path := os.environ.get("LLAMACLII_WORKSPACE"):
+    if env_path := os.environ.get("PHRONIS_WORKSPACE"):
         return os.path.abspath(env_path)
 
     if os.path.isfile(CONFIG_FILE):

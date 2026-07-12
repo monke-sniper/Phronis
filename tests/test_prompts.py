@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from llamacli.prompts import (
+from phronis.prompts import (
     _count_dataset,
     _list_cached_models,
     _list_datasets,
@@ -191,13 +191,13 @@ class TestDatasetFilter:
 
 class TestChatModelPicker:
     def test_prompt_chat_model_exists(self):
-        from llamacli.prompts import prompt_chat_model
+        from phronis.prompts import prompt_chat_model
         assert callable(prompt_chat_model)
 
 
 class TestModelTypeForRepo:
     def test_missing_cache_returns_none(self):
-        import llamacli.prompts as prompts_mod
+        import phronis.prompts as prompts_mod
         old_cache = prompts_mod.HF_CACHE
         try:
             prompts_mod.HF_CACHE = "/nonexistent/hf/cache_12345"
@@ -210,7 +210,7 @@ class TestModelTypeForRepo:
 class TestDatasetCountJsonl:
     def test_count_jsonl_by_lines(self, monkeypatch):
         import tempfile
-        import llamacli.prompts as prompts_mod
+        import phronis.prompts as prompts_mod
         with tempfile.TemporaryDirectory() as tmp:
             old_data_dir = prompts_mod.DATA_DIR
             old_dataset_info = prompts_mod.DATASET_INFO

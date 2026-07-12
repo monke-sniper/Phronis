@@ -58,7 +58,7 @@ def check_hf_cli():
 
 def run_bootstrap(console: Console, force=False):
     """Run bootstrap setup. Asks for confirmation unless force=True."""
-    console.print("\n[bold white]llamacli Setup[/bold white]\n")
+    console.print("\n[bold white]phronis Setup[/bold white]\n")
 
     checks = []
 
@@ -131,7 +131,7 @@ def run_bootstrap(console: Console, force=False):
             should_install = console.input("[dim]Install missing dependencies now? (y/n): [/]").strip().lower() == "y"
 
     if not should_install:
-        console.print("[dim]You can run setup later with: llamacli setup[/]")
+        console.print("[dim]You can run setup later with: phronis setup[/]")
         return False
 
     _install_missing(console, missing)

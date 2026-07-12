@@ -1,6 +1,6 @@
 """Isolated workspace environment management.
 
-Ensures llamacli runs inside a compatible Python virtual environment
+Ensures phronis runs inside a compatible Python virtual environment
 regardless of the system's default Python version.
 """
 
@@ -30,8 +30,8 @@ def _venv_cli():
     return os.path.join(_venv_dir(), "Scripts", "llamafactory-cli.exe")
 
 
-def _venv_llamacli():
-    return os.path.join(_venv_dir(), "Scripts", "llamacli.exe")
+def _venv_phronis():
+    return os.path.join(_venv_dir(), "Scripts", "phronis.exe")
 
 
 def is_inside_isolated_venv():
@@ -42,9 +42,9 @@ def is_inside_isolated_venv():
 def _project_root_for_editable_install():
     """Return the repo root if this package was installed in editable mode."""
     try:
-        import llamacli as _pkg  # Import from inside the package to get __file__ path
+        import phronis as _pkg  # Import from inside the package to get __file__ path
 
-        inside_src = Path(_pkg.__file__).resolve().parent  # .../src/llamacli
+        inside_src = Path(_pkg.__file__).resolve().parent  # .../src/phronis
         repo_root = inside_src.parent.parent  # Go up to repo root
         if (repo_root / "pyproject.toml").is_file():
             return str(repo_root)
@@ -111,7 +111,7 @@ def ensure_isolated_venv(console: Console):
     """Create the workspace venv and install dependencies.
 
     Returns True on success, False otherwise.  On success the venv
-    is ready to run `llamacli` and `llamafactory-cli train`.
+    is ready to run `phronis` and `llamafactory-cli train`.
     """
     venv_dir = _venv_dir()
     venv_py = _venv_python()
@@ -127,7 +127,7 @@ def ensure_isolated_venv(console: Console):
             "[red]No compatible Python interpreter found.[/]"
         )
         console.print(
-            "[dim]llamacli needs Python 3.11–3.13 with CUDA support.[/]"
+            "[dim]phronis needs Python 3.11–3.13 with CUDA support.[/]"
         )
         console.print(
             "[dim]Install Python 3.12 from https://python.org and re-run.[/]"
@@ -167,10 +167,10 @@ def ensure_isolated_venv(console: Console):
         )
         return False
 
-    # Install the llamacli package itself
+    # Install the phronis package itself
     repo_root = _project_root_for_editable_install()
     try:
-        with console.status("[bold green]Installing llamacli into isolated environment...", spinner="dots"):
+        with console.status("[bold green]Installing phronis into isolated environment...", spinner="dots"):
             if repo_root:
                 subprocess.run(
                     [venv_pip, "install", "-e", repo_root],
@@ -178,12 +178,12 @@ def ensure_isolated_venv(console: Console):
                 )
             else:
                 subprocess.run(
-                    [venv_pip, "install", "llamacli"],
+                    [venv_pip, "install", "phronis"],
                     check=True, timeout=300,
                 )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         console.print(
-            "[red]Failed to install llamacli into isolated environment.[/]"
+            "[red]Failed to install phronis into isolated environment.[/]"
         )
         return False
 
@@ -193,11 +193,11 @@ def ensure_isolated_venv(console: Console):
 
 def _create_wrapper_script(console: Console, venv_dir: str):
     """Write a tiny launcher so users can add it to their PATH."""
-    wrapper = os.path.join(get_workspace_path(), "llamacli.cmd")
+    wrapper = os.path.join(get_workspace_path(), "phronis.cmd")
     venv_py = os.path.join(venv_dir, "Scripts", "python.exe")
     cmd_body = (
         "@echo off\n"
-        f'"{venv_py}" -m llamacli %*\n'
+        f'"{venv_py}" -m phronis %*\n'
     )
     try:
         with open(wrapper, "w", encoding="utf-8") as f:
@@ -209,7 +209,7 @@ def _create_wrapper_script(console: Console, venv_dir: str):
             f"[dim]Launcher written to:[/] [bold]{wrapper}[/]"
         )
         console.print(
-            "[dim]Add that folder to your PATH for a quicker `llamacli` command.[/]"
+            "[dim]Add that folder to your PATH for a quicker `phronis` command.[/]"
         )
 
 
@@ -224,4 +224,4 @@ def forward_to_venv(argv=None):
     venv_py = _venv_python()
     if not os.path.isfile(venv_py):
         return False
-    return subprocess.run([venv_py, "-m", "llamacli"] + argv[1:])
+    return subprocess.run([venv_py, "-m", "phronis"] + argv[1:])

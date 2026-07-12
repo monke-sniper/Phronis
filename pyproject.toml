@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "llamacli"
+name = "phronis"
 version = "0.1.0"
 description = "Interactive CLI for fine-tuning LLMs — no config files, no boilerplate"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [
-    { name = "llamacli" }
+    { name = "phronis" }
 ]
 keywords = ["LLM", "fine-tuning", "LoRA", "CLI", "machine-learning", "huggingface"]
 classifiers = [
@@ -36,11 +36,11 @@ dependencies = [
 ]
 
 [project.scripts]
-llamacli = "llamacli.cli:entry"
+phronis = "phronis.cli:entry"
 
 [project.urls]
-Homepage = "https://github.com/monke-sniper/llamacli"
-Repository = "https://github.com/monke-sniper/llamacli"
+Homepage = "https://github.com/monke-sniper/phronis"
+Repository = "https://github.com/monke-sniper/phronis"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/llamacli"]
+packages = ["src/phronis"]

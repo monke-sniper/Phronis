@@ -15,7 +15,7 @@ def _dummy_console():
 
 class TestBuildConfig:
     def test_quick_train_config_defaults(self):
-        from llamacli.cli import _build_config
+        from phronis.cli import _build_config
         config = _build_config("test/model", "qwen3", "identity", 3.0, "lora", {}, "run_test")
         assert config["model_name_or_path"] == "test/model"
         assert config["template"] == "qwen3"
@@ -30,7 +30,7 @@ class TestBuildConfig:
         assert os.path.isabs(config["dataset_dir"])
 
     def test_quick_train_config_custom_params(self):
-        from llamacli.cli import _build_config
+        from phronis.cli import _build_config
         params = {
             "lora_rank": 16, "lora_dropout": 0.1, "lora_alpha": 32,
             "epochs": 5.0, "learning_rate": 5e-5, "batch_size": 1,
@@ -46,19 +46,19 @@ class TestBuildConfig:
         assert config["cutoff_len"] == 1024
 
     def test_full_finetune_config_excludes_lora(self):
-        from llamacli.cli import _build_config
+        from phronis.cli import _build_config
         config = _build_config("test/model", "qwen3", "ds1", 1.0, "full", {}, "run_test")
         assert config["finetuning_type"] == "full"
         assert "lora_rank" not in config
 
     def test_freeze_config(self):
-        from llamacli.cli import _build_config
+        from phronis.cli import _build_config
         config = _build_config("test/model", "qwen3", "ds1", 3.0, "freeze", {}, "run_test")
         assert config["finetuning_type"] == "freeze"
         assert "lora_rank" not in config
 
     def test_target_loss_sets_save_and_logging_steps(self):
-        from llamacli.cli import _build_config
+        from phronis.cli import _build_config
         config = _build_config("m", "t", "d", 3.0, "lora", {}, "run", target_loss=0.9)
         assert config["save_steps"] == 1
         assert config["logging_steps"] == 1
@@ -66,7 +66,7 @@ class TestBuildConfig:
 
 class TestRecordTraining:
     def test_records_training_history(self):
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         import importlib
 
         fd, temp_path = tempfile.mkstemp(suffix=".yaml")
@@ -77,8 +77,8 @@ class TestRecordTraining:
         state_mod._state = None
 
         try:
-            from llamacli.cli import _record_training
-            from llamacli.state import get_state
+            from phronis.cli import _record_training
+            from phronis.state import get_state
 
             _record_training("test_run", "test/model", "identity", "sft", 3.0, "qwen3")
             state = get_state()
@@ -101,25 +101,25 @@ class TestRecordTraining:
 class TestEnsureDirectories:
     def test_creates_all_dirs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
+            import phronis
             old_vars = {
-                "PROJECT_ROOT": llamacli.PROJECT_ROOT,
-                "DATA_DIR": llamacli.DATA_DIR,
-                "CONFIGS_DIR": llamacli.CONFIGS_DIR,
-                "SAVES_DIR": llamacli.SAVES_DIR,
-                "MODELS_DIR": llamacli.MODELS_DIR,
-                "DATASET_INFO": llamacli.DATASET_INFO,
+                "PROJECT_ROOT": phronis.PROJECT_ROOT,
+                "DATA_DIR": phronis.DATA_DIR,
+                "CONFIGS_DIR": phronis.CONFIGS_DIR,
+                "SAVES_DIR": phronis.SAVES_DIR,
+                "MODELS_DIR": phronis.MODELS_DIR,
+                "DATASET_INFO": phronis.DATASET_INFO,
             }
 
-            llamacli.PROJECT_ROOT = tmp
-            llamacli.DATA_DIR = os.path.join(tmp, "data")
-            llamacli.CONFIGS_DIR = os.path.join(tmp, "configs")
-            llamacli.SAVES_DIR = os.path.join(tmp, "saves")
-            llamacli.MODELS_DIR = os.path.join(tmp, "models")
-            llamacli.DATASET_INFO = os.path.join(tmp, "data", "dataset_info.json")
+            phronis.PROJECT_ROOT = tmp
+            phronis.DATA_DIR = os.path.join(tmp, "data")
+            phronis.CONFIGS_DIR = os.path.join(tmp, "configs")
+            phronis.SAVES_DIR = os.path.join(tmp, "saves")
+            phronis.MODELS_DIR = os.path.join(tmp, "models")
+            phronis.DATASET_INFO = os.path.join(tmp, "data", "dataset_info.json")
 
             try:
-                from llamacli.cli import _ensure_directories
+                from phronis.cli import _ensure_directories
                 _ensure_directories()
                 assert os.path.isdir(os.path.join(tmp, "data"))
                 assert os.path.isdir(os.path.join(tmp, "configs"))
@@ -129,29 +129,29 @@ class TestEnsureDirectories:
                 assert os.path.isfile(os.path.join(tmp, "data", "README.txt"))
             finally:
                 for k, v in old_vars.items():
-                    setattr(llamacli, k, v)
+                    setattr(phronis, k, v)
 
     def test_readme_content(self):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
+            import phronis
             old_vars = {
-                "PROJECT_ROOT": llamacli.PROJECT_ROOT,
-                "DATA_DIR": llamacli.DATA_DIR,
-                "CONFIGS_DIR": llamacli.CONFIGS_DIR,
-                "SAVES_DIR": llamacli.SAVES_DIR,
-                "MODELS_DIR": llamacli.MODELS_DIR,
-                "DATASET_INFO": llamacli.DATASET_INFO,
+                "PROJECT_ROOT": phronis.PROJECT_ROOT,
+                "DATA_DIR": phronis.DATA_DIR,
+                "CONFIGS_DIR": phronis.CONFIGS_DIR,
+                "SAVES_DIR": phronis.SAVES_DIR,
+                "MODELS_DIR": phronis.MODELS_DIR,
+                "DATASET_INFO": phronis.DATASET_INFO,
             }
 
-            llamacli.PROJECT_ROOT = tmp
-            llamacli.DATA_DIR = os.path.join(tmp, "data")
-            llamacli.CONFIGS_DIR = os.path.join(tmp, "configs")
-            llamacli.SAVES_DIR = os.path.join(tmp, "saves")
-            llamacli.MODELS_DIR = os.path.join(tmp, "models")
-            llamacli.DATASET_INFO = os.path.join(tmp, "data", "dataset_info.json")
+            phronis.PROJECT_ROOT = tmp
+            phronis.DATA_DIR = os.path.join(tmp, "data")
+            phronis.CONFIGS_DIR = os.path.join(tmp, "configs")
+            phronis.SAVES_DIR = os.path.join(tmp, "saves")
+            phronis.MODELS_DIR = os.path.join(tmp, "models")
+            phronis.DATASET_INFO = os.path.join(tmp, "data", "dataset_info.json")
 
             try:
-                from llamacli.cli import _ensure_directories
+                from phronis.cli import _ensure_directories
                 _ensure_directories()
                 with open(os.path.join(tmp, "data", "README.txt"), "r") as f:
                     content = f.read()
@@ -159,7 +159,7 @@ class TestEnsureDirectories:
                 assert "ShareGPT format" in content
             finally:
                 for k, v in old_vars.items():
-                    setattr(llamacli, k, v)
+                    setattr(phronis, k, v)
 
 
 class TestExportScreenConfig:
@@ -180,7 +180,7 @@ class TestExportScreenConfig:
 
 class TestSmartDefaults:
     def test_all_required_keys_present(self):
-        from llamacli.cli import SMART_DEFAULTS
+        from phronis.cli import SMART_DEFAULTS
         required = [
             "stage", "finetuning_type",
             "cutoff_len", "per_device_train_batch_size", "gradient_accumulation_steps",
@@ -192,7 +192,7 @@ class TestSmartDefaults:
             assert key in SMART_DEFAULTS, f"Missing: {key}"
 
     def test_sensible_values(self):
-        from llamacli.cli import SMART_DEFAULTS
+        from phronis.cli import SMART_DEFAULTS
         assert 0 < SMART_DEFAULTS["learning_rate"] < 0.1
         assert 1 <= SMART_DEFAULTS["per_device_train_batch_size"] <= 64
         assert 1 <= SMART_DEFAULTS["gradient_accumulation_steps"] <= 128
@@ -201,12 +201,12 @@ class TestSmartDefaults:
 
 class TestChatTrainedLogic:
     def test_no_history_initial_state(self):
-        from llamacli.state import AppState
+        from phronis.state import AppState
         state = AppState()
         assert state.training_history == []
 
     def test_most_recent_is_last_entry(self):
-        from llamacli.state import AppState
+        from phronis.state import AppState
         state = AppState()
         state.training_history = [
             {"name": "first", "model": "m1", "dataset": "ds1", "adapter": "saves/first/lora", "template": "qwen3", "stage": "sft", "epochs": 1, "config": "cfg", "timestamp": "2026-01-01"},
@@ -219,7 +219,7 @@ class TestChatTrainedLogic:
 
 class TestMainMenu:
     def test_menu_has_all_choices(self):
-        from llamacli.cli import MAIN_MENU
+        from phronis.cli import MAIN_MENU
         values = [c.value for c in MAIN_MENU]
         assert "quick_train" in values
         assert "advanced_train" in values
@@ -237,50 +237,50 @@ class TestMainMenu:
         assert "exit" in values
 
     def test_menu_choices_unique(self):
-        from llamacli.cli import MAIN_MENU
+        from phronis.cli import MAIN_MENU
         values = [c.value for c in MAIN_MENU]
         assert len(values) == len(set(values))
 
 
 class TestHfDownload:
     def test_import_works(self):
-        from llamacli.hf import search_models, download_model, download_model_interactive
+        from phronis.hf import search_models, download_model, download_model_interactive
         assert callable(search_models)
         assert callable(download_model)
         assert callable(download_model_interactive)
 
     def test_dataset_download_imports(self):
-        from llamacli.hf import search_datasets, download_dataset, download_dataset_interactive
+        from phronis.hf import search_datasets, download_dataset, download_dataset_interactive
         assert callable(search_datasets)
         assert callable(download_dataset)
         assert callable(download_dataset_interactive)
 
     def test_rich_tqdm_exists(self):
-        from llamacli.hf import RichTqdm
+        from phronis.hf import RichTqdm
         assert hasattr(RichTqdm, "format_bar")
         assert hasattr(RichTqdm, "format_size")
         assert hasattr(RichTqdm, "format_speed")
         assert hasattr(RichTqdm, "format_eta")
 
     def test_format_size(self):
-        from llamacli.hf import RichTqdm
+        from phronis.hf import RichTqdm
         assert "B" in RichTqdm.format_size(100)
         assert "KB" in RichTqdm.format_size(2048)
         assert "MB" in RichTqdm.format_size(2 * 1024 * 1024)
         assert "GB" in RichTqdm.format_size(2 * 1024 * 1024 * 1024)
 
     def test_format_speed(self):
-        from llamacli.hf import RichTqdm
+        from phronis.hf import RichTqdm
         speed = RichTqdm.format_speed(1024 * 1024 * 5)
         assert "MB/s" in speed
 
     def test_format_eta(self):
-        from llamacli.hf import RichTqdm
+        from phronis.hf import RichTqdm
         assert "min" in RichTqdm.format_eta(120) or "s" in RichTqdm.format_eta(120)
         assert "s" in RichTqdm.format_eta(30)
 
     def test_hf_availability_check(self):
-        from llamacli.hf import _check_hf, _HF_AVAILABLE
+        from phronis.hf import _check_hf, _HF_AVAILABLE
         console = _dummy_console()
         assert _check_hf(console) == _HF_AVAILABLE
 
@@ -288,11 +288,11 @@ class TestHfDownload:
 class TestAddDatasetScreen:
     def test_add_dataset_creates_entry(self):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
-            old_data = llamacli.DATA_DIR
-            old_dsi = llamacli.DATASET_INFO
-            llamacli.DATA_DIR = tmp
-            llamacli.DATASET_INFO = os.path.join(tmp, "dataset_info.json")
+            import phronis
+            old_data = phronis.DATA_DIR
+            old_dsi = phronis.DATASET_INFO
+            phronis.DATA_DIR = tmp
+            phronis.DATASET_INFO = os.path.join(tmp, "dataset_info.json")
 
             try:
                 entry = {"file_name": "test_data.json", "formatting": "alpaca"}
@@ -304,13 +304,13 @@ class TestAddDatasetScreen:
                 assert "test_ds" in registry
                 assert registry["test_ds"]["file_name"] == "test_data.json"
             finally:
-                llamacli.DATA_DIR = old_data
-                llamacli.DATASET_INFO = old_dsi
+                phronis.DATA_DIR = old_data
+                phronis.DATASET_INFO = old_dsi
 
 
 class TestLogo:
     def test_logo_returns_text(self):
-        from llamacli.logo import get_logo_text
+        from phronis.logo import get_logo_text
         text = get_logo_text()
         assert isinstance(text, str)
         assert len(text) > 0
@@ -342,20 +342,20 @@ class TestDatasetAutoDiscover:
             with open(data_file, "w") as f:
                 json.dump(data, f)
 
-            import llamacli
-            import llamacli.prompts as prompts_mod
-            old_data = llamacli.DATA_DIR
-            old_dsi = llamacli.DATASET_INFO
+            import phronis
+            import phronis.prompts as prompts_mod
+            old_data = phronis.DATA_DIR
+            old_dsi = phronis.DATASET_INFO
             pd_old_data = prompts_mod.DATA_DIR
             pd_old_dsi = prompts_mod.DATASET_INFO
 
-            llamacli.DATA_DIR = tmp
-            llamacli.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
+            phronis.DATA_DIR = tmp
+            phronis.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
             prompts_mod.DATA_DIR = tmp
             prompts_mod.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
 
             try:
-                from llamacli.prompts import _list_datasets
+                from phronis.prompts import _list_datasets
                 datasets = _list_datasets()
                 names = [d["name"] for d in datasets]
                 assert "test_alpaca" in names, f"Names: {names}"
@@ -363,8 +363,8 @@ class TestDatasetAutoDiscover:
                 assert ds["format"] == "alpaca"
                 assert ds["source"] == "auto"
             finally:
-                llamacli.DATA_DIR = old_data
-                llamacli.DATASET_INFO = old_dsi
+                phronis.DATA_DIR = old_data
+                phronis.DATASET_INFO = old_dsi
                 prompts_mod.DATA_DIR = pd_old_data
                 prompts_mod.DATASET_INFO = pd_old_dsi
 
@@ -375,27 +375,27 @@ class TestDatasetAutoDiscover:
             with open(data_file, "w") as f:
                 json.dump(data, f)
 
-            import llamacli
-            import llamacli.prompts as prompts_mod
-            old_data = llamacli.DATA_DIR
-            old_dsi = llamacli.DATASET_INFO
+            import phronis
+            import phronis.prompts as prompts_mod
+            old_data = phronis.DATA_DIR
+            old_dsi = phronis.DATASET_INFO
             pd_old_data = prompts_mod.DATA_DIR
             pd_old_dsi = prompts_mod.DATASET_INFO
 
-            llamacli.DATA_DIR = tmp
-            llamacli.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
+            phronis.DATA_DIR = tmp
+            phronis.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
             prompts_mod.DATA_DIR = tmp
             prompts_mod.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
 
             try:
-                from llamacli.prompts import _list_datasets
+                from phronis.prompts import _list_datasets
                 datasets = _list_datasets()
                 ds = [d for d in datasets if d["name"] == "test_sharegpt"][0]
                 assert ds["format"] == "sharegpt"
                 assert ds["source"] == "auto"
             finally:
-                llamacli.DATA_DIR = old_data
-                llamacli.DATASET_INFO = old_dsi
+                phronis.DATA_DIR = old_data
+                phronis.DATASET_INFO = old_dsi
                 prompts_mod.DATA_DIR = pd_old_data
                 prompts_mod.DATASET_INFO = pd_old_dsi
 
@@ -406,26 +406,26 @@ class TestDatasetAutoDiscover:
             with open(data_file, "w") as f:
                 json.dump(data, f)
 
-            import llamacli
-            import llamacli.prompts as prompts_mod
-            old_data = llamacli.DATA_DIR
-            old_dsi = llamacli.DATASET_INFO
+            import phronis
+            import phronis.prompts as prompts_mod
+            old_data = phronis.DATA_DIR
+            old_dsi = phronis.DATASET_INFO
             pd_old_data = prompts_mod.DATA_DIR
             pd_old_dsi = prompts_mod.DATASET_INFO
 
-            llamacli.DATA_DIR = tmp
-            llamacli.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
+            phronis.DATA_DIR = tmp
+            phronis.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
             prompts_mod.DATA_DIR = tmp
             prompts_mod.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
 
             try:
-                from llamacli.prompts import _list_datasets
+                from phronis.prompts import _list_datasets
                 datasets = _list_datasets()
                 names = [d["name"] for d in datasets]
                 assert "unknown" not in names
             finally:
-                llamacli.DATA_DIR = old_data
-                llamacli.DATASET_INFO = old_dsi
+                phronis.DATA_DIR = old_data
+                phronis.DATASET_INFO = old_dsi
                 prompts_mod.DATA_DIR = pd_old_data
                 prompts_mod.DATASET_INFO = pd_old_dsi
 
@@ -440,27 +440,27 @@ class TestDatasetAutoDiscover:
             with open(dsi, "w") as f:
                 json.dump({"conflict": {"file_name": "conflict.json", "formatting": "sharegpt"}}, f)
 
-            import llamacli
-            import llamacli.prompts as prompts_mod
-            old_data = llamacli.DATA_DIR
-            old_dsi = llamacli.DATASET_INFO
+            import phronis
+            import phronis.prompts as prompts_mod
+            old_data = phronis.DATA_DIR
+            old_dsi = phronis.DATASET_INFO
             pd_old_data = prompts_mod.DATA_DIR
             pd_old_dsi = prompts_mod.DATASET_INFO
 
-            llamacli.DATA_DIR = tmp
-            llamacli.DATASET_INFO = dsi
+            phronis.DATA_DIR = tmp
+            phronis.DATASET_INFO = dsi
             prompts_mod.DATA_DIR = tmp
             prompts_mod.DATASET_INFO = dsi
 
             try:
-                from llamacli.prompts import _list_datasets
+                from phronis.prompts import _list_datasets
                 datasets = _list_datasets()
                 ds = [d for d in datasets if d["name"] == "conflict"][0]
                 assert ds["format"] == "sharegpt"
                 assert ds["source"] == "registered"
             finally:
-                llamacli.DATA_DIR = old_data
-                llamacli.DATASET_INFO = old_dsi
+                phronis.DATA_DIR = old_data
+                phronis.DATASET_INFO = old_dsi
                 prompts_mod.DATA_DIR = pd_old_data
                 prompts_mod.DATASET_INFO = pd_old_dsi
 
@@ -469,35 +469,35 @@ class TestPromptModelEmpty:
     def test_no_cached_models_returns_empty(self):
         import tempfile
         tmp = tempfile.mkdtemp()
-        import llamacli
-        import llamacli.prompts as prompts_mod
-        old_cache = llamacli.HF_CACHE
+        import phronis
+        import phronis.prompts as prompts_mod
+        old_cache = phronis.HF_CACHE
         pd_old_cache = prompts_mod.HF_CACHE
-        llamacli.HF_CACHE = tmp
+        phronis.HF_CACHE = tmp
         prompts_mod.HF_CACHE = tmp
 
         try:
-            from llamacli.prompts import _list_cached_models
+            from phronis.prompts import _list_cached_models
             models = _list_cached_models()
             assert models == []
         finally:
-            llamacli.HF_CACHE = old_cache
+            phronis.HF_CACHE = old_cache
             prompts_mod.HF_CACHE = pd_old_cache
 
 
 class TestCheckFirstRun:
     def test_creates_marker_after_bootstrap(self, monkeypatch):
         import tempfile
-        import llamacli
-        import llamacli.cli as cli_mod
-        import llamacli.state as state_mod
+        import phronis
+        import phronis.cli as cli_mod
+        import phronis.state as state_mod
 
         with tempfile.TemporaryDirectory() as tmp:
-            old_project_root = llamacli.PROJECT_ROOT
-            llamacli.PROJECT_ROOT = tmp
+            old_project_root = phronis.PROJECT_ROOT
+            phronis.PROJECT_ROOT = tmp
 
             old_state_path = state_mod.STATE_PATH
-            state_mod.STATE_PATH = os.path.join(tmp, ".llamacli.yaml")
+            state_mod.STATE_PATH = os.path.join(tmp, ".phronis.yaml")
             state_mod._state = None
 
             monkeypatch.setattr(cli_mod, "run_bootstrap", lambda c: None)
@@ -505,8 +505,8 @@ class TestCheckFirstRun:
             try:
                 console = _dummy_console()
                 cli_mod._check_first_run(console)
-                assert os.path.isfile(os.path.join(tmp, ".llamacli.yaml"))
+                assert os.path.isfile(os.path.join(tmp, ".phronis.yaml"))
             finally:
-                llamacli.PROJECT_ROOT = old_project_root
+                phronis.PROJECT_ROOT = old_project_root
                 state_mod.STATE_PATH = old_state_path
                 state_mod._state = None

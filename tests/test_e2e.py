@@ -1,4 +1,4 @@
-"""E2E tests that spawn the real llamacli process and interact via stdin/stdout.
+"""E2E tests that spawn the real phronis process and interact via stdin/stdout.
 
 These tests verify:
 - Subcommand discovery (--help output)
@@ -22,7 +22,7 @@ def workspace(tmp_path):
     ws = tmp_path / "e2e_workspace"
     ws.mkdir()
     # Create a minimal state file so _check_first_run() doesn't trigger bootstrap
-    state_file = ws / ".llamacli.yaml"
+    state_file = ws / ".phronis.yaml"
     state_file.write_text("active_model: ''\nactive_dataset: ''\n", encoding="utf-8")
     return str(ws)
 
@@ -79,7 +79,7 @@ class TestVersionFlag:
         runner.start(args=["--version"])
         runner.assert_exit_code(0)
         output = runner.get_clean_output()
-        assert "llamacli" in output.lower()
+        assert "phronis" in output.lower()
 
 
 class TestGlobalFlags:
@@ -304,7 +304,7 @@ class TestUpdateCommand:
             pass  # pip index may not be supported
         output = runner.get_clean_output()
         # At minimum the banner should appear; if pip is unavailable we accept that
-        assert "Update" in output or "pip" in output.lower() or "llamacli" in output.lower() or output == ""
+        assert "Update" in output or "pip" in output.lower() or "phronis" in output.lower() or output == ""
 
 
 class TestCleanCommand:

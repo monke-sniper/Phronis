@@ -132,7 +132,7 @@ class TestTrainingWizardConfig:
 class TestStatePersistence:
     def test_state_survives_roundtrip(self):
         import tempfile
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
 
         old_path = state_mod.STATE_PATH
         old_state = state_mod._state
@@ -160,15 +160,15 @@ class TestStatePersistence:
 
 class TestDirectoryIntegrity:
     def test_project_root_is_cwd(self):
-        from llamacli import PROJECT_ROOT
+        from phronis import PROJECT_ROOT
         assert os.path.isdir(PROJECT_ROOT)
 
     def test_data_dir_exists_or_creatable(self):
-        from llamacli import DATA_DIR
+        from phronis import DATA_DIR
         os.makedirs(DATA_DIR, exist_ok=True)
         assert os.path.isdir(DATA_DIR)
 
     def test_saves_dir_exists_or_creatable(self):
-        from llamacli import SAVES_DIR
+        from phronis import SAVES_DIR
         os.makedirs(SAVES_DIR, exist_ok=True)
         assert os.path.isdir(SAVES_DIR)

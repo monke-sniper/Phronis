@@ -1,4 +1,4 @@
-"""Process-level E2E test harness for llamacli.
+"""Process-level E2E test harness for phronis.
 
 Spawns the real CLI in a subprocess and interacts via stdin/stdout.
 This tests the actual binary, not imported Python functions.
@@ -22,7 +22,7 @@ def strip_ansi(text: str) -> str:
 
 
 class CliRunner:
-    """Spawns llamacli as a real subprocess and provides send/expect helpers."""
+    """Spawns phronis as a real subprocess and provides send/expect helpers."""
 
     def __init__(self, workspace_dir: str):
         self.workspace_dir = workspace_dir
@@ -33,14 +33,14 @@ class CliRunner:
         self._stop_reading = threading.Event()
 
     def start(self, args: Optional[list] = None, timeout: float = 30):
-        """Spawn llamacli with an isolated workspace.
+        """Spawn phronis with an isolated workspace.
 
-        Uses `python -m llamacli.cli` to call the Typer app directly,
+        Uses `python -m phronis.cli` to call the Typer app directly,
         bypassing `entry()` venv forwarding logic. This keeps tests fast
         and deterministic while still testing real subprocess stdin/stdout.
         """
-        env = {**os.environ, "LLAMACLII_WORKSPACE": self.workspace_dir}
-        cmd = [sys.executable, "-m", "llamacli.cli"] + (args or [])
+        env = {**os.environ, "PHRONIS_WORKSPACE": self.workspace_dir}
+        cmd = [sys.executable, "-m", "phronis.cli"] + (args or [])
 
         self.proc = subprocess.Popen(
             cmd,

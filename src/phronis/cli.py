@@ -42,7 +42,7 @@ from .prompts import (
 from .runner import run_export, run_training
 from .state import get_state, reload_state
 
-app = typer.Typer(name="llamacli", help="LLaMA-Factory Interactive CLI", add_completion=False)
+app = typer.Typer(name="phronis", help="LLaMA-Factory Interactive CLI", add_completion=False)
 
 console = Console(
     file=io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace"),
@@ -184,13 +184,13 @@ def _record_training(output_name, model, dataset, stage, epochs, template):
         "dataset": dataset,
         "stage": stage,
         "epochs": epochs,
-        "config": os.path.join("configs", f"llamacli_{output_name}.yaml"),
+        "config": os.path.join("configs", f"phronis_{output_name}.yaml"),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
     state.training_history.append(record)
     state.save()
 
-    summary_path = os.path.join(CONFIGS_DIR, f"llamacli_{output_name}_summary.yaml")
+    summary_path = os.path.join(CONFIGS_DIR, f"phronis_{output_name}_summary.yaml")
     try:
         with open(summary_path, "w", encoding="utf-8") as f:
             yaml.dump(record, f, default_flow_style=False, allow_unicode=True)
@@ -200,7 +200,7 @@ def _record_training(output_name, model, dataset, stage, epochs, template):
 
 def _write_config_and_train(console, config, output_name, command="train", target_loss=None, **cli_args):
     os.makedirs(CONFIGS_DIR, exist_ok=True)
-    config_path = os.path.join(CONFIGS_DIR, f"llamacli_{output_name}.yaml")
+    config_path = os.path.join(CONFIGS_DIR, f"phronis_{output_name}.yaml")
 
     # Ensure the output_dir inside the config matches the filename-based run name
     config["output_dir"] = os.path.join("saves", output_name, "lora")
@@ -837,7 +837,7 @@ def export_screen(console):
             }
 
             os.makedirs(CONFIGS_DIR, exist_ok=True)
-            config_path = os.path.join(CONFIGS_DIR, "llamacli_export_temp.yaml")
+            config_path = os.path.join(CONFIGS_DIR, "phronis_export_temp.yaml")
             with open(config_path, "w", encoding="utf-8") as f:
                 yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
@@ -1068,10 +1068,10 @@ def main(
     _no_input = no_input
 
     if workspace:
-        os.environ["LLAMACLII_WORKSPACE"] = workspace
+        os.environ["PHRONIS_WORKSPACE"] = workspace
         # Re-init module constants for this process without persisting to global config
         import importlib
-        import llamacli as _pkg
+        import phronis as _pkg
         importlib.reload(_pkg)
 
     if no_color:
@@ -1084,15 +1084,15 @@ def main(
 
     if version:
         from . import PROJECT_ROOT
-        console.print(f"[white]llamacli[/] [bold]{PROJECT_ROOT}[/]")
+        console.print(f"[white]phronis[/] [bold]{PROJECT_ROOT}[/]")
         raise typer.Exit()
     if ctx.invoked_subcommand is None:
         if no_input:
             console.print("[red]--no-input passed but no subcommand given.[/]")
             console.print("[dim]Use subcommands with explicit flags instead of interactive mode:[/]")
-            console.print("  llamacli train --config <path>")
-            console.print("  llamacli chat --model <model_id>")
-            console.print("  llamacli export --adapter <path> --dest <dir>")
+            console.print("  phronis train --config <path>")
+            console.print("  phronis chat --model <model_id>")
+            console.print("  phronis export --adapter <path> --dest <dir>")
             raise typer.Exit(code=1)
         _check_first_run(console)
         interactive_loop()
@@ -1100,9 +1100,9 @@ def main(
 
 def _check_first_run(console):
     from . import PROJECT_ROOT
-    marker = os.path.join(PROJECT_ROOT, ".llamacli.yaml")
+    marker = os.path.join(PROJECT_ROOT, ".phronis.yaml")
     if not os.path.isfile(marker):
-        console.print("\n[bold cyan]Welcome to llamacli![/bold cyan]")
+        console.print("\n[bold cyan]Welcome to phronis![/bold cyan]")
         console.print("[dim]Let's check your system before we start.[/]\n")
         run_bootstrap(console)
         console.print()
@@ -1245,7 +1245,7 @@ def chat(
     try:
         from llamafactory.chat import ChatModel
     except ImportError:
-        console.print("[red]llamafactory not installed. Run: llamacli setup[/]")
+        console.print("[red]llamafactory not installed. Run: phronis setup[/]")
         raise typer.Exit(1)
 
     config = {
@@ -1345,7 +1345,7 @@ def export(
     }
 
     os.makedirs(CONFIGS_DIR, exist_ok=True)
-    config_path = os.path.join(CONFIGS_DIR, "llamacli_export_temp.yaml")
+    config_path = os.path.join(CONFIGS_DIR, "phronis_export_temp.yaml")
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
@@ -1608,7 +1608,7 @@ def info(
         f"[bold]Active Template:[/] {state.active_template}\n"
         f"[bold]Active Dataset:[/] {state.active_dataset or '(none)'}\n"
     )
-    console.print(Panel(panel_content, title="[bold]llamacli Info[/bold]", border_style="white"))
+    console.print(Panel(panel_content, title="[bold]phronis Info[/bold]", border_style="white"))
 
     table = Table(show_header=True, header_style="bold white", border_style="white")
     table.add_column("Directory", style="white")
@@ -1627,7 +1627,7 @@ def doctor(
 ):
     """Run a full system diagnostic (like brew doctor)."""
     from . import PROJECT_ROOT
-    console.print("\n[bold white]llamacli Doctor[/bold white]\n")
+    console.print("\n[bold white]phronis Doctor[/bold white]\n")
 
     # Use bootstrap for core checks
     ok = run_bootstrap(console, force=fix)
@@ -1701,7 +1701,7 @@ def update(
     check: bool = typer.Option(False, "--check", help="Only check for updates, don't install"),
 ):
     """Self-update via pip install --upgrade."""
-    console.print("[bold]llamacli Update[/bold]\n")
+    console.print("[bold]phronis Update[/bold]\n")
 
     # Use current interpreter's pip (works for venvs and system python)
     args_prefix = [sys.executable, "-m", "pip"]
@@ -1709,7 +1709,7 @@ def update(
     # Check latest version
     try:
         result = subprocess.run(
-            args_prefix + ["index", "versions", "llamacli"],
+            args_prefix + ["index", "versions", "phronis"],
             capture_output=True, text=True, timeout=30,
         )
         latest = None
@@ -1733,11 +1733,11 @@ def update(
     console.print("[dim]Installing latest version...[/]")
     try:
         result = subprocess.run(
-            args_prefix + ["install", "--upgrade", "llamacli"],
+            args_prefix + ["install", "--upgrade", "phronis"],
             capture_output=False, text=True, timeout=300,
         )
         if result.returncode == 0:
-            console.print("\n[green]llamacli updated successfully![/]")
+            console.print("\n[green]phronis updated successfully![/]")
         else:
             console.print("\n[red]Update failed.[/]")
             raise typer.Exit(1)

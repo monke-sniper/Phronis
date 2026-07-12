@@ -1,1 +1,1 @@
-# llamacli test suite
+# phronis test suite

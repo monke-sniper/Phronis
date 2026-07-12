@@ -12,7 +12,7 @@ def _dummy_console():
 
 class TestDemoDatasetHelpers:
     def test_list_demo_datasets_returns_list(self):
-        from llamacli.prompts import _list_demo_datasets
+        from phronis.prompts import _list_demo_datasets
         datasets = _list_demo_datasets()
         assert isinstance(datasets, list)
         names = [d["name"] for d in datasets]
@@ -20,7 +20,7 @@ class TestDemoDatasetHelpers:
         assert "demo_chat" in names
 
     def test_demo_datasets_have_required_keys(self):
-        from llamacli.prompts import _list_demo_datasets
+        from phronis.prompts import _list_demo_datasets
         datasets = _list_demo_datasets()
         assert all("name" in d for d in datasets)
         assert all("format" in d for d in datasets)
@@ -28,7 +28,7 @@ class TestDemoDatasetHelpers:
         assert all(d["source"] == "demo" for d in datasets)
 
     def test_count_demo_dataset_returns_int(self):
-        from llamacli.prompts import _count_demo_dataset, _list_demo_datasets
+        from phronis.prompts import _count_demo_dataset, _list_demo_datasets
         datasets = _list_demo_datasets()
         assert datasets
         cnt = _count_demo_dataset(datasets[0]["name"])
@@ -36,23 +36,23 @@ class TestDemoDatasetHelpers:
         assert cnt > 0
 
     def test_count_nonexistent_demo_dataset(self):
-        from llamacli.prompts import _count_demo_dataset
+        from phronis.prompts import _count_demo_dataset
         assert _count_demo_dataset("__missing__") == 0
 
 
 class TestPromptDatasetFallback:
     def test_falls_back_to_demo_when_workspace_empty(self, monkeypatch):
-        import llamacli
-        import llamacli.prompts as prompts_mod
+        import phronis
+        import phronis.prompts as prompts_mod
 
         with tempfile.TemporaryDirectory() as tmp:
-            old_data = llamacli.DATA_DIR
-            old_dsi = llamacli.DATASET_INFO
+            old_data = phronis.DATA_DIR
+            old_dsi = phronis.DATASET_INFO
             pd_old_data = prompts_mod.DATA_DIR
             pd_old_dsi = prompts_mod.DATASET_INFO
 
-            llamacli.DATA_DIR = tmp
-            llamacli.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
+            phronis.DATA_DIR = tmp
+            phronis.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
             prompts_mod.DATA_DIR = tmp
             prompts_mod.DATASET_INFO = os.path.join(tmp, "nonexistent.json")
 
@@ -76,8 +76,8 @@ class TestPromptDatasetFallback:
                 text = console.file.getvalue()
                 assert "No personal datasets found" in text
             finally:
-                llamacli.DATA_DIR = old_data
-                llamacli.DATASET_INFO = old_dsi
+                phronis.DATA_DIR = old_data
+                phronis.DATASET_INFO = old_dsi
                 prompts_mod.DATA_DIR = pd_old_data
                 prompts_mod.DATASET_INFO = pd_old_dsi
 
@@ -85,7 +85,7 @@ class TestPromptDatasetFallback:
 class TestDemoDatasetJsonlCount:
     def test_count_jsonl_demo_dataset(self):
         import tempfile
-        import llamacli.prompts as prompts_mod
+        import phronis.prompts as prompts_mod
         with tempfile.TemporaryDirectory() as tmp:
             old_dir = prompts_mod.BUNDLED_DATA_DIR
             old_dsi = prompts_mod.BUNDLED_DATASET_INFO

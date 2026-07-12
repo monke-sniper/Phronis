@@ -14,20 +14,20 @@ def mock_console():
 
 @pytest.fixture
 def temp_workspace(monkeypatch):
-    """Provide an isolated workspace directory and patch llamacli paths."""
+    """Provide an isolated workspace directory and patch phronis paths."""
     tmp = tempfile.mkdtemp()
-    import llamacli
-    import llamacli.cli as cli_mod
-    import llamacli.prompts as prompts_mod
-    import llamacli.state as state_mod
+    import phronis
+    import phronis.cli as cli_mod
+    import phronis.prompts as prompts_mod
+    import phronis.state as state_mod
 
     old = {
-        "PROJECT_ROOT": llamacli.PROJECT_ROOT,
-        "DATA_DIR": llamacli.DATA_DIR,
-        "SAVES_DIR": llamacli.SAVES_DIR,
-        "MODELS_DIR": llamacli.MODELS_DIR,
-        "CONFIGS_DIR": llamacli.CONFIGS_DIR,
-        "DATASET_INFO": llamacli.DATASET_INFO,
+        "PROJECT_ROOT": phronis.PROJECT_ROOT,
+        "DATA_DIR": phronis.DATA_DIR,
+        "SAVES_DIR": phronis.SAVES_DIR,
+        "MODELS_DIR": phronis.MODELS_DIR,
+        "CONFIGS_DIR": phronis.CONFIGS_DIR,
+        "DATASET_INFO": phronis.DATASET_INFO,
         "STATE_PATH": state_mod.STATE_PATH,
     }
 
@@ -37,17 +37,17 @@ def temp_workspace(monkeypatch):
     models = os.path.join(root, "models")
     configs = os.path.join(root, "configs")
     dsi = os.path.join(data, "dataset_info.json")
-    state_path = os.path.join(root, ".llamacli.yaml")
+    state_path = os.path.join(root, ".phronis.yaml")
 
     for d in (data, saves, models, configs):
         os.makedirs(d, exist_ok=True)
 
-    llamacli.PROJECT_ROOT = root
-    llamacli.DATA_DIR = data
-    llamacli.SAVES_DIR = saves
-    llamacli.MODELS_DIR = models
-    llamacli.CONFIGS_DIR = configs
-    llamacli.DATASET_INFO = dsi
+    phronis.PROJECT_ROOT = root
+    phronis.DATA_DIR = data
+    phronis.SAVES_DIR = saves
+    phronis.MODELS_DIR = models
+    phronis.CONFIGS_DIR = configs
+    phronis.DATASET_INFO = dsi
     state_mod.STATE_PATH = state_path
 
     path_map = {
@@ -73,7 +73,7 @@ def temp_workspace(monkeypatch):
     for k, v in old.items():
         if k == "STATE_PATH":
             continue
-        setattr(llamacli, k, v)
+        setattr(phronis, k, v)
     for mod in (cli_mod, prompts_mod):
         for k, v in old.items():
             if hasattr(mod, k):

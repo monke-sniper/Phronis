@@ -5,10 +5,10 @@ from rich.console import Console
 def get_logo_text():
     try:
         fig = Figlet(font="slant")
-        return fig.renderText("llamacli")
+        return fig.renderText("phronis")
     except Exception:
         fig = Figlet(font="standard")
-        return fig.renderText("llamacli")
+        return fig.renderText("phronis")
 
 
 def print_logo(console: Console):

@@ -7,8 +7,8 @@ import yaml
 
 import pytest
 
-from llamacli import DEFAULT_CONFIG, STATE_PATH
-from llamacli.state import AppState, get_state
+from phronis import DEFAULT_CONFIG, STATE_PATH
+from phronis.state import AppState, get_state
 
 
 class TestAppState:
@@ -22,7 +22,7 @@ class TestAppState:
         assert state.training_history == []
 
     def test_load_defaults_when_no_config(self):
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         old_path = state_mod.STATE_PATH
         old_state = state_mod._state
 
@@ -42,7 +42,7 @@ class TestAppState:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_save_and_load(self):
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         old_path = state_mod.STATE_PATH
         old_state = state_mod._state
 
@@ -83,7 +83,7 @@ class TestAppState:
         with open(temp_path, "w") as f:
             yaml.dump({"active_model": "override/model"}, f)
 
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         old_path = state_mod.STATE_PATH
         old_state = state_mod._state
         state_mod.STATE_PATH = temp_path
@@ -101,7 +101,7 @@ class TestAppState:
                 os.unlink(temp_path)
 
     def test_reload_state(self):
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         old_path = state_mod.STATE_PATH
         old_state = state_mod._state
 

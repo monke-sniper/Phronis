@@ -22,9 +22,9 @@ def _get_git_commit():
         return ""
 
 
-def _get_llamacli_version():
+def _get_phronis_version():
     try:
-        return get_pkg_version("llamacli")
+        return get_pkg_version("phronis")
     except Exception:
         return "0.1.0"
 
@@ -49,7 +49,7 @@ def gather_repro_metadata(command: str, **kwargs) -> dict:
     """
     seed = kwargs.get("seed", random.randint(0, 2**32 - 1))
     return {
-        "llamacli_version": _get_llamacli_version(),
+        "phronis_version": _get_phronis_version(),
         "llamafactory_version": _get_llamafactory_version(),
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "platform": sys.platform,
@@ -67,7 +67,7 @@ def format_repro_header(metadata: dict) -> str:
     This keeps the metadata readable while ensuring it does not interfere
     with LLaMA-Factory's YAML parser.
     """
-    lines = ["# llamacli reproducibility manifest", "# ---------------------------------"]
+    lines = ["# phronis reproducibility manifest", "# ---------------------------------"]
     for key, value in metadata.items():
         if isinstance(value, dict):
             for sub_key, sub_value in value.items():

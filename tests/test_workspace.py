@@ -8,7 +8,7 @@ import pytest
 class TestSyncDemoDatasets:
     def test_is_noop(self):
         """sync_demo_datasets is now a no-op because data is centrally managed."""
-        from llamacli.workspace import sync_demo_datasets
+        from phronis.workspace import sync_demo_datasets
 
         with tempfile.TemporaryDirectory() as tmp:
             bundled_dir = os.path.join(tmp, "bundled")
@@ -34,7 +34,7 @@ class TestSyncDemoDatasets:
             assert not os.path.isfile(os.path.join(data_dir, "identity.json"))
 
     def test_skips_when_bundled_dir_missing(self):
-        from llamacli.workspace import sync_demo_datasets
+        from phronis.workspace import sync_demo_datasets
 
         with tempfile.TemporaryDirectory() as tmp:
             sync_demo_datasets(

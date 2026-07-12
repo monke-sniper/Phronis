@@ -3,12 +3,12 @@ import yaml
 
 import pytest
 
-from llamacli import CONFIGS_DIR, PROJECT_ROOT
+from phronis import CONFIGS_DIR, PROJECT_ROOT
 
 
 class TestRunner:
     def test_find_cli_works(self):
-        from llamacli.runner import _find_cli
+        from phronis.runner import _find_cli
         cli = _find_cli()
         assert os.path.isfile(cli) or cli is not None
 
@@ -86,7 +86,7 @@ class TestExportConfig:
 
 class TestMetricsParsing:
     def test_parse_valid_metrics_line(self):
-        from llamacli.runner import _parse_metrics
+        from phronis.runner import _parse_metrics
         line = "{'loss': '3.35', 'grad_norm': '4.318', 'learning_rate': '9.619e-05', 'epoch': '0.87'}"
         result = _parse_metrics(line)
         assert result is not None
@@ -96,7 +96,7 @@ class TestMetricsParsing:
         assert result["epoch"] == "0.87"
 
     def test_parse_metrics_with_extra_keys(self):
-        from llamacli.runner import _parse_metrics
+        from phronis.runner import _parse_metrics
         line = "{'loss': '2.41', 'grad_norm': '2.25', 'learning_rate': '5.975e-05', 'epoch': '1.70', 'total_flos': '9999GF'}"
         result = _parse_metrics(line)
         assert result is not None
@@ -104,25 +104,25 @@ class TestMetricsParsing:
         assert "total_flos" not in result
 
     def test_parse_non_metrics_line(self):
-        from llamacli.runner import _parse_metrics
+        from phronis.runner import _parse_metrics
         line = "[INFO] Loading dataset identity.json..."
         result = _parse_metrics(line)
         assert result is None
 
     def test_parse_line_with_metrics_embedded(self):
-        from llamacli.runner import _parse_metrics
+        from phronis.runner import _parse_metrics
         line = "INFO {'loss': '1.50', 'grad_norm': '1.0', 'learning_rate': '1e-06', 'epoch': '3.0'} done"
         result = _parse_metrics(line)
         assert result is not None
         assert result["loss"] == "1.50"
 
     def test_format_metrics_bar_empty(self):
-        from llamacli.runner import _format_metrics
+        from phronis.runner import _format_metrics
         bar = _format_metrics({}, (0, 0), 10)
         assert "10s" in bar
 
     def test_format_metrics_bar_full(self):
-        from llamacli.runner import _format_metrics
+        from phronis.runner import _format_metrics
         metrics = {"loss": "3.35", "grad_norm": "4.32", "learning_rate": "9.6e-05", "epoch": "0.87"}
         bar = _format_metrics(metrics, (5, 18), 30)
         assert "Step [5/18]" in bar
@@ -133,7 +133,7 @@ class TestMetricsParsing:
         assert "30s" in bar
 
     def test_format_metrics_no_steps(self):
-        from llamacli.runner import _format_metrics
+        from phronis.runner import _format_metrics
         metrics = {"loss": "2.41"}
         bar = _format_metrics(metrics, (3, 0), 15)
         assert "Step 3" in bar
@@ -141,7 +141,7 @@ class TestMetricsParsing:
 
 class TestMetricsRe:
     def test_matches_numeric_loss(self):
-        from llamacli.runner import METRICS_RE, _parse_metrics
+        from phronis.runner import METRICS_RE, _parse_metrics
         line = "{'loss': 2.1234, 'learning_rate': 1e-05, 'epoch': 1.0}"
         assert METRICS_RE.search(line) is not None
         parsed = _parse_metrics(line)
@@ -149,7 +149,7 @@ class TestMetricsRe:
         assert parsed["loss"] == 2.1234
 
     def test_matches_string_loss(self):
-        from llamacli.runner import METRICS_RE, _parse_metrics
+        from phronis.runner import METRICS_RE, _parse_metrics
         line = "{'loss': 'nan', 'learning_rate': '1e-05'}"
         assert METRICS_RE.search(line) is not None
         parsed = _parse_metrics(line)
@@ -157,7 +157,7 @@ class TestMetricsRe:
         assert parsed["loss"] == "nan"
 
     def test_skips_plain_text(self):
-        from llamacli.runner import METRICS_RE, _parse_metrics
+        from phronis.runner import METRICS_RE, _parse_metrics
         line = "the loss value is high today"
         assert METRICS_RE.search(line) is None
         parsed = _parse_metrics(line)

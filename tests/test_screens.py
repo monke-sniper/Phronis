@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-import llamacli.cli as cli_mod
+import phronis.cli as cli_mod
 
 
 def _fake_confirm_yes(*a, **k):
@@ -34,9 +34,9 @@ class TestQuickTrainScreen:
 
         configs_dir = os.path.join(temp_workspace, "configs")
         files = os.listdir(configs_dir)
-        assert any(f.startswith("llamacli_run_") and not f.endswith("_summary.yaml") for f in files)
+        assert any(f.startswith("phronis_run_") and not f.endswith("_summary.yaml") for f in files)
 
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         state = state_mod.get_state()
         assert len(state.training_history) >= 1
         assert state.training_history[-1]["model"] == "Qwen/Qwen3-0.6B"
@@ -82,9 +82,9 @@ class TestAdvancedTrainScreen:
 
         configs_dir = os.path.join(temp_workspace, "configs")
         files = os.listdir(configs_dir)
-        assert "llamacli_adv_run.yaml" in files
+        assert "phronis_adv_run.yaml" in files
 
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         state = state_mod.get_state()
         assert len(state.training_history) >= 1
         assert state.training_history[-1]["stage"] == "sft"
@@ -114,6 +114,6 @@ class TestViewDatasetsScreen:
         monkeypatch.setattr(mock_console, "input", lambda prompt: "1")
         cli_mod.view_datasets_screen(mock_console)
 
-        import llamacli.state as state_mod
+        import phronis.state as state_mod
         state = state_mod.get_state()
         assert state.active_dataset == "active_ds"

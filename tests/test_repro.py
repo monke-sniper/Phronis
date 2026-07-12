@@ -15,11 +15,11 @@ def _dummy_console():
 class TestWriteConfigAndTrain:
     def test_creates_yaml_with_repro_header(self, monkeypatch):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
-            import llamacli.cli as cli_mod
+            import phronis
+            import phronis.cli as cli_mod
 
-            old_configs = llamacli.CONFIGS_DIR
-            llamacli.CONFIGS_DIR = tmp
+            old_configs = phronis.CONFIGS_DIR
+            phronis.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
             monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
@@ -39,12 +39,12 @@ class TestWriteConfigAndTrain:
                     dataset="identity",
                     epochs=3,
                 )
-                path = os.path.join(tmp, "llamacli_test_run.yaml")
+                path = os.path.join(tmp, "phronis_test_run.yaml")
                 assert os.path.isfile(path)
 
                 with open(path, "r", encoding="utf-8") as f:
                     raw = f.read()
-                assert "llamacli reproducibility manifest" in raw
+                assert "phronis reproducibility manifest" in raw
                 assert "command: quick_train" in raw
                 assert "random_seed:" in raw
 
@@ -54,16 +54,16 @@ class TestWriteConfigAndTrain:
                 assert isinstance(loaded["seed"], int)
                 assert loaded["output_dir"] == os.path.join("saves", "test_run", "lora")
             finally:
-                llamacli.CONFIGS_DIR = old_configs
+                phronis.CONFIGS_DIR = old_configs
                 cli_mod.CONFIGS_DIR = old_configs
 
     def test_preserves_existing_seed(self, monkeypatch):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
-            import llamacli.cli as cli_mod
+            import phronis
+            import phronis.cli as cli_mod
 
-            old_configs = llamacli.CONFIGS_DIR
-            llamacli.CONFIGS_DIR = tmp
+            old_configs = phronis.CONFIGS_DIR
+            phronis.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
             monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
@@ -74,21 +74,21 @@ class TestWriteConfigAndTrain:
                     _dummy_console(), config, "seeded_run",
                     command="train", model="m", dataset="d",
                 )
-                path = os.path.join(tmp, "llamacli_seeded_run.yaml")
+                path = os.path.join(tmp, "phronis_seeded_run.yaml")
                 with open(path, "r", encoding="utf-8") as f:
                     loaded = yaml.safe_load(f)
                 assert loaded["seed"] == 42
             finally:
-                llamacli.CONFIGS_DIR = old_configs
+                phronis.CONFIGS_DIR = old_configs
                 cli_mod.CONFIGS_DIR = old_configs
 
     def test_output_dir_matches_run_name(self, monkeypatch):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
-            import llamacli.cli as cli_mod
+            import phronis
+            import phronis.cli as cli_mod
 
-            old_configs = llamacli.CONFIGS_DIR
-            llamacli.CONFIGS_DIR = tmp
+            old_configs = phronis.CONFIGS_DIR
+            phronis.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
             monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
@@ -104,23 +104,23 @@ class TestWriteConfigAndTrain:
                     _dummy_console(), config, "fixed_run",
                     command="quick_train", model="m", dataset="d",
                 )
-                path = os.path.join(tmp, "llamacli_fixed_run.yaml")
+                path = os.path.join(tmp, "phronis_fixed_run.yaml")
                 with open(path, "r", encoding="utf-8") as f:
                     loaded = yaml.safe_load(f)
                 assert loaded["output_dir"] == os.path.join("saves", "fixed_run", "lora")
             finally:
-                llamacli.CONFIGS_DIR = old_configs
+                phronis.CONFIGS_DIR = old_configs
                 cli_mod.CONFIGS_DIR = old_configs
 
 
 class TestTyperTrainCommand:
     def test_cli_train_writes_yaml(self, monkeypatch):
         with tempfile.TemporaryDirectory() as tmp:
-            import llamacli
-            import llamacli.cli as cli_mod
+            import phronis
+            import phronis.cli as cli_mod
 
-            old_configs = llamacli.CONFIGS_DIR
-            llamacli.CONFIGS_DIR = tmp
+            old_configs = phronis.CONFIGS_DIR
+            phronis.CONFIGS_DIR = tmp
             cli_mod.CONFIGS_DIR = tmp
 
             monkeypatch.setattr(cli_mod, "run_training", lambda c, p, o, **kw: True)
@@ -138,7 +138,7 @@ class TestTyperTrainCommand:
                     ],
                 )
                 assert result.exit_code == 0
-                path = os.path.join(tmp, "llamacli_cli_test.yaml")
+                path = os.path.join(tmp, "phronis_cli_test.yaml")
                 assert os.path.isfile(path)
 
                 with open(path, "r", encoding="utf-8") as f:
@@ -150,5 +150,5 @@ class TestTyperTrainCommand:
                 assert loaded["dataset"] == "identity"
                 assert "seed" in loaded
             finally:
-                llamacli.CONFIGS_DIR = old_configs
+                phronis.CONFIGS_DIR = old_configs
                 cli_mod.CONFIGS_DIR = old_configs

@@ -3,7 +3,7 @@
 from .workspace import init_workspace
 
 _pkg_dir = os.path.dirname(os.path.abspath(__file__))
-# Repo root is two levels above src/llamacli
+# Repo root is two levels above src/phronis
 REPO_ROOT = os.path.dirname(os.path.dirname(_pkg_dir))
 
 # Central input directories (repo-level, shared across workspaces)
@@ -13,7 +13,7 @@ YAML_DIR = os.path.join(REPO_ROOT, "yaml")
 # Output directories (workspace-based)
 _workspace_path, _dirs = init_workspace()
 PROJECT_ROOT = _workspace_path
-STATE_PATH = os.path.join(PROJECT_ROOT, ".llamacli.yaml")
+STATE_PATH = os.path.join(PROJECT_ROOT, ".phronis.yaml")
 SAVES_DIR = _dirs["saves"]
 MODELS_DIR = _dirs["models"]
 CONFIGS_DIR = _dirs["configs"]

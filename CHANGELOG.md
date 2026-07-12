@@ -17,17 +17,17 @@
 - **Download Dataset** menu option: Search and download datasets from HuggingFace with auto-format-detection
 - **Progress bar with ETA**: Detailed download progress showing percentage, bytes, file count, speed, and estimated time remaining
 - **File size display**: Shows individual file sizes and total download size before proceeding, with confirmation prompt
-- **Centralized workspace**: All files stored in `~/.llamaworkspace/` by default
-  - Configurable via `workspace.yaml` or `LLAMACLII_WORKSPACE` env var
+- **Centralized workspace**: All files stored in `~/.phronisworkspace/` by default
+  - Configurable via `workspace.yaml` or `PHRONIS_WORKSPACE` env var
   - Auto-creates `GUIDE.md` with full documentation
   - Structure: `data/`, `saves/`, `models/`, `configs/`
 - **Zero-setup bootstrap**: Auto-checks system on first launch
   - Verifies Python >= 3.11, LLaMA-Factory, PyTorch, GPU
   - Asks before installing missing dependencies
-  - Option to skip and run later via `llamacli setup`
+  - Option to skip and run later via `phronis setup`
 - **Workspace Info** menu option: Shows workspace location, directory sizes, file counts
 - **System Check** menu option: Verifies Python, LLaMA-Factory, GPU, workspace setup
-- **`llamacli setup` command**: Run system check and install missing dependencies manually
+- **`phronis setup` command**: Run system check and install missing dependencies manually
 - **Training run summaries**: Each training run now saves a YAML summary in `configs/`
 - **GUIDE.md**: Auto-generated guide file in workspace explaining all features and configuration
 
