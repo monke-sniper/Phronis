@@ -88,17 +88,17 @@ Then follow the menu:
 | **Chat Trained Model** | Instantly loads your most recent training run — no selection needed |
 | **Quick Chat** | Chat with any model ± adapter with streaming token output |
 | **Export** | Merge LoRA adapters into standalone models for inference |
-| **Centralized Workspace** | All files in `~/.phronisworkspace/` — configurable via `workspace.yaml` or env var |
+| **Centralized Workspace** | All files in `./workspace/` — configurable via `workspace.yaml` or env var |
 | **Zero-Setup Bootstrap** | Auto-detects and installs missing dependencies on first run |
 | **System Check** | Verify Python, LLaMA-Factory, GPU, and workspace setup |
 | **Training Summaries** | Each training run produces a modular YAML summary in `configs/` |
 
 ## Project Layout
 
-phronis uses a centralized workspace at `~/.phronisworkspace/` by default. You can change this via `workspace.yaml` or the `PHRONIS_WORKSPACE` environment variable.
+phronis uses a centralized workspace at `./workspace/` by default. You can change this via `workspace.yaml` or the `PHRONIS_WORKSPACE` environment variable.
 
 ```
-~/.phronisworkspace/
+./workspace/
 ├── GUIDE.md            # full documentation & configuration guide
 ├── workspace.yaml      # workspace configuration
 ├── .phronis.yaml      # per-project state
@@ -221,7 +221,7 @@ If your system Python is 3.14 or newer, `phronis` will automatically create an i
 
 1. Detect your Python version
 2. Find a compatible interpreter (`py -3.12` on Windows, or system Python 3.12 on Linux/macOS)
-3. Create a virtual environment at `~/.phronisworkspace/.venv`
+3. Create a virtual environment at `./workspace/.venv`
 4. Install CUDA PyTorch, LLaMA-Factory, and `phronis` inside the venv
 5. Create a wrapper script (`phronis.cmd` on Windows) for easy launching
 
@@ -234,7 +234,7 @@ You can skip this and manage your own environment by using Python 3.11–3.13 di
 ### Default Structure
 
 ```
-~/.phronisworkspace/
+./workspace/
 ├── GUIDE.md                        # auto-generated feature guide
 ├── workspace.yaml                    # workspace configuration
 ├── .phronis.yaml                   # application state (active model, history, etc.)
@@ -266,7 +266,7 @@ phronis
 python -c "from phronis.workspace import set_workspace_path; set_workspace_path('D:/phronis-data')"
 ```
 
-Or manually create `~/.phronisworkspace/workspace.yaml`:
+Or manually create `./workspace/workspace.yaml`:
 ```yaml
 workspace_path: D:\phronis-data
 ```
@@ -515,8 +515,8 @@ The merged model is a complete, standalone HuggingFace Transformers model that c
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model = AutoModelForCausalLM.from_pretrained("~/.phronisworkspace/models/my_model")
-tokenizer = AutoTokenizer.from_pretrained("~/.phronisworkspace/models/my_model")
+model = AutoModelForCausalLM.from_pretrained("./workspace/models/my_model")
+tokenizer = AutoTokenizer.from_pretrained("./workspace/models/my_model")
 ```
 
 ### Using Exported Models with vLLM / TGI
@@ -526,12 +526,12 @@ Exported models are standard HuggingFace models. Start an inference server:
 ```bash
 # vLLM (recommended for throughput)
 python -m vllm.entrypoints.openai.api_server \
-  --model ~/.phronisworkspace/models/my_model \
+  --model ./workspace/models/my_model \
   --tensor-parallel-size 1
 
 # HuggingFace TGI
  docker run --gpus all -p 8080:80 \
-  -v ~/.phronisworkspace/models:/models \
+  -v ./workspace/models:/models \
   ghcr.io/huggingface/text-generation-inference:latest \
   --model-id /models/my_model
 ```
@@ -575,13 +575,13 @@ phronis doctor --fix
 
 If you see the "Setting up isolated environment" message every time, the venv may be corrupt. Delete it and let `phronis` rebuild:
 ```bash
-rm -rf ~/.phronisworkspace/.venv   # Linux/macOS
-rmdir /s /q %USERPROFILE%\.phronisworkspace\.venv   # Windows
+rm -rf ./workspace/.venv   # Linux/macOS
+rmdir /s /q workspace\.venv   # Windows (run from repo root)
 ```
 
 ### Windows: `phronis` command not recognized
 
-After first-run setup, a wrapper is written to `~/.phronisworkspace/phronis.cmd`. Add this directory to your PATH, or use:
+After first-run setup, a wrapper is written to `./workspace/phronis.cmd`. Add this directory to your PATH, or use:
 ```bash
 python -m phronis
 ```

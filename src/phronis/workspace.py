@@ -2,17 +2,28 @@
 import os
 import yaml
 
-DEFAULT_WORKSPACE = os.path.join(os.path.expanduser("~"), ".phronisworkspace")
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".phronisworkspace", "workspace.yaml")
+import os
+import yaml
+
+_src_dir = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.normpath(os.path.join(_src_dir, "..", ".."))
+_IS_SOURCE_CHECKOUT = os.path.isfile(os.path.join(_repo_root, "pyproject.toml"))
+
+DEFAULT_WORKSPACE = (
+    os.path.join(_repo_root, "workspace")
+    if _IS_SOURCE_CHECKOUT
+    else os.path.join(os.path.expanduser("~"), ".phronisworkspace")
+)
+CONFIG_FILE = os.path.join(DEFAULT_WORKSPACE, "workspace.yaml")
 
 GUIDE_CONTENT = """# phronis Guide
 
 ## Workspace
 Your workspace is the central location for ALL phronis files — datasets, configs, saves, models.
-Default: ~/.phronisworkspace/
+Default: ./workspace/ (source checkout) or ~/.phronisworkspace/ (installed)
 
 ### Structure
-    ~/.phronisworkspace/
+    ./workspace/ (source checkout) or ~/.phronisworkspace/ (installed)
     ├── workspace.yaml      # workspace config
     ├── .phronis.yaml       # app state
     ├── data/               # datasets (drop .json files here)

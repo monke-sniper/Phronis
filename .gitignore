@@ -1,3 +1,6 @@
+# Workspace runtime (local checkout)
+workspace/
+
 # Python
 __pycache__/
 *.py[cod]

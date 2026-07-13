@@ -17,7 +17,7 @@
 - **Download Dataset** menu option: Search and download datasets from HuggingFace with auto-format-detection
 - **Progress bar with ETA**: Detailed download progress showing percentage, bytes, file count, speed, and estimated time remaining
 - **File size display**: Shows individual file sizes and total download size before proceeding, with confirmation prompt
-- **Centralized workspace**: All files stored in `~/.phronisworkspace/` by default
+- **Centralized workspace**: All files stored in `./workspace/` by default (source checkout) or `~/.phronisworkspace/` (installed)
   - Configurable via `workspace.yaml` or `PHRONIS_WORKSPACE` env var
   - Auto-creates `GUIDE.md` with full documentation
   - Structure: `data/`, `saves/`, `models/`, `configs/`

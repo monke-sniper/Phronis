@@ -2594,7 +2594,7 @@ def entry() -> None:
         if result is None:
             console.print(
                 "[red]Could not launch phronis inside isolated venv. "
-                "Try deleting ~/.phronisworkspace/.venv and re-running.[/]"
+                "Try deleting your workspace .venv and re-running.[/]"
             )
             sys.exit(1)
         if result.returncode != 0:
