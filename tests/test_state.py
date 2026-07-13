@@ -1,14 +1,11 @@
-import json
 import os
 import shutil
 import tempfile
 
 import yaml
 
-import pytest
 
-from phronis import DEFAULT_CONFIG, STATE_PATH
-from phronis.state import AppState, get_state
+from phronis.state import AppState
 
 
 class TestAppState:

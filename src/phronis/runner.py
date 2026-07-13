@@ -168,14 +168,14 @@ def _restore_checkpoint(console, output_dir, best_step, target_loss):
     return True
 
 
-def run_training(console: Console, config_path: str, output_name: str, target_loss: float = None):
+def run_training(console: Console, config_path: str, output_name: str, target_loss: float = None) -> bool:
     # Load config to find output_dir
     cfg = {}
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
-    except Exception:
-        pass
+    except (OSError, yaml.YAMLError) as exc:
+        console.print(f"[yellow]Warning: could not read config {config_path}: {exc}[/]")
     output_dir = cfg.get("output_dir", os.path.join("saves", output_name, "lora"))
 
     lines = []
@@ -314,7 +314,7 @@ def run_training(console: Console, config_path: str, output_name: str, target_lo
     return success
 
 
-def run_export(console: Console, config_path: str):
+def run_export(console: Console, config_path: str) -> bool:
     try:
         with console.status("[bold green]Exporting / merging model...", spinner="dots"):
             result = subprocess.run(

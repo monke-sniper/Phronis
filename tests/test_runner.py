@@ -1,9 +1,7 @@
 import os
 import yaml
 
-import pytest
 
-from phronis import CONFIGS_DIR, PROJECT_ROOT
 
 
 class TestRunner:

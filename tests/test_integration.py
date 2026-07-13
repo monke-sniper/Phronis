@@ -2,7 +2,6 @@ import os
 import tempfile
 import yaml
 
-import pytest
 
 
 class TestTrainingWizardConfig:
@@ -153,7 +152,7 @@ class TestStatePersistence:
             assert s2.active_dataset == "ds1"
         finally:
             state_mod.STATE_PATH = old_path
-            state_mod._state = None
+            state_mod._state = old_state
             if os.path.exists(f.name):
                 os.unlink(f.name)
 

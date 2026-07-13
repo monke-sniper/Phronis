@@ -39,8 +39,9 @@ def is_inside_isolated_venv():
     return _venv_dir() in sys.executable
 
 
-def _project_root_for_editable_install():
-    """Return the repo root if this package was installed in editable mode."""
+def _project_root_for_editable_install() -> str | None:
+    """Return the repo root if this package was installed in editable mode,
+    or if the repo can be discovered from the current working directory."""
     try:
         import phronis as _pkg  # Import from inside the package to get __file__ path
 
@@ -50,7 +51,31 @@ def _project_root_for_editable_install():
             return str(repo_root)
     except Exception:
         pass
+
+    # Fallback: search from cwd upwards for a repo containing src/phronis
+    try:
+        cwd = Path.cwd()
+        for parent in [cwd] + list(cwd.parents):
+            if (parent / "pyproject.toml").is_file() and (parent / "src" / "phronis").is_dir():
+                return str(parent)
+    except Exception:
+        pass
     return None
+
+
+def _venv_has_package(venv_py: str, package_name: str) -> bool:
+    """Return True if `package_name` is importable inside the venv."""
+    if not os.path.isfile(venv_py):
+        return False
+    try:
+        result = subprocess.run(
+            [venv_py, "-c", f"import {package_name}"],
+            capture_output=True,
+            timeout=15,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
 
 
 def _current_python_info():
@@ -107,7 +132,7 @@ def _find_compatible_python():
     return None
 
 
-def ensure_isolated_venv(console: Console):
+def ensure_isolated_venv(console: Console) -> bool:
     """Create the workspace venv and install dependencies.
 
     Returns True on success, False otherwise.  On success the venv
@@ -117,39 +142,53 @@ def ensure_isolated_venv(console: Console):
     venv_py = _venv_python()
     venv_pip = _venv_pip()
 
-    # Already exists and is complete
-    if os.path.isfile(venv_py) and os.path.isfile(venv_pip):
+    # Phase 1 — create venv if it doesn't exist yet.
+    if not os.path.isfile(venv_py) or not os.path.isfile(venv_pip):
+        py_exe = _find_compatible_python()
+        if not py_exe:
+            console.print(
+                "[red]No compatible Python interpreter found.[/]"
+            )
+            console.print(
+                "[dim]phronis needs Python 3.11–3.13 with CUDA support.[/]"
+            )
+            console.print(
+                "[dim]Install Python 3.12 from https://python.org and re-run.[/]"
+            )
+            return False
+
+        try:
+            with console.status(f"[bold green]Creating isolated environment ({py_exe})...", spinner="dots"):
+                subprocess.run([py_exe, "-m", "venv", venv_dir], check=True)
+        except subprocess.CalledProcessError as exc:
+            console.print(f"[red]Failed to create venv: {exc}[/]")
+            return False
+
+    # Phase 2 — verify required packages are present.
+    missing_pkgs = []
+    if not _venv_has_package(venv_py, "phronis"):
+        missing_pkgs.append("phronis")
+    if not _venv_has_package(venv_py, "llamafactory"):
+        missing_pkgs.append("llamafactory")
+
+    if not missing_pkgs:
         return True
 
-    py_exe = _find_compatible_python()
-    if not py_exe:
-        console.print(
-            "[red]No compatible Python interpreter found.[/]"
-        )
-        console.print(
-            "[dim]phronis needs Python 3.11–3.13 with CUDA support.[/]"
-        )
-        console.print(
-            "[dim]Install Python 3.12 from https://python.org and re-run.[/]"
-        )
-        return False
-
-    try:
-        with console.status(f"[bold green]Creating isolated environment ({py_exe})...", spinner="dots"):
-            subprocess.run([py_exe, "-m", "venv", venv_dir], check=True)
-    except subprocess.CalledProcessError as exc:
-        console.print(f"[red]Failed to create venv: {exc}[/]")
-        return False
+    console.print(
+        f"[dim]Repairing isolated environment (missing: {', '.join(missing_pkgs)})...[/]"
+    )
 
     # Upgrade pip
     try:
         with console.status("[bold green]Upgrading pip...", spinner="dots"):
-            subprocess.run(
+            result = subprocess.run(
                 [venv_pip, "install", "--upgrade", "pip"],
-                capture_output=True, timeout=120,
+                capture_output=True, text=True, timeout=120,
             )
+        if result.returncode != 0:
+            console.print("[yellow]Warning: pip upgrade failed in isolated venv. Continuing with bundled pip.[/]")
     except subprocess.TimeoutExpired:
-        pass  # non-fatal
+        console.print("[yellow]Warning: pip upgrade timed out. Continuing with bundled pip.[/]")
 
     # Install torch with CUDA
     try:
@@ -167,7 +206,7 @@ def ensure_isolated_venv(console: Console):
         )
         return False
 
-    # Install the phronis package itself
+    # Install phronis package + LLaMA-Factory
     repo_root = _project_root_for_editable_install()
     try:
         with console.status("[bold green]Installing phronis into isolated environment...", spinner="dots"):
@@ -184,6 +223,14 @@ def ensure_isolated_venv(console: Console):
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         console.print(
             "[red]Failed to install phronis into isolated environment.[/]"
+        )
+        return False
+
+    # Re-verify after install
+    if not _venv_has_package(venv_py, "phronis"):
+        console.print(
+            "[red]phronis still not importable after installation. "
+            "Check the pip output above for errors.[/]"
         )
         return False
 
@@ -216,12 +263,14 @@ def _create_wrapper_script(console: Console, venv_dir: str):
 def forward_to_venv(argv=None):
     """Re-execute the current command using the isolated venv interpreter.
 
-    Returns only on failure; on success the process is replaced by the
-    subprocess call.
+    Returns None if the venv is missing or phronis is not installed inside it;
+    otherwise returns the CompletedProcess from the forwarded run.
     """
     if argv is None:
         argv = sys.argv
     venv_py = _venv_python()
     if not os.path.isfile(venv_py):
-        return False
+        return None
+    if not _venv_has_package(venv_py, "phronis"):
+        return None
     return subprocess.run([venv_py, "-m", "phronis"] + argv[1:])

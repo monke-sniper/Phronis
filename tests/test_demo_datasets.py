@@ -2,7 +2,6 @@ import io
 import os
 import tempfile
 
-import pytest
 from rich.console import Console
 
 

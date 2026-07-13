@@ -1,6 +1,7 @@
+from typing import Any
+
 import json
 import os
-import time
 
 from rich.console import Console
 from rich.table import Table
@@ -90,14 +91,14 @@ class RichTqdm(tqdm_auto):
         return self.format_dict.get("eta", None)
 
 
-def _check_hf(console: Console):
+def _check_hf(console: Console) -> bool:
     if not _HF_AVAILABLE:
         console.print("[red]huggingface_hub is not installed. Install it: pip install huggingface-hub[/]")
         return False
     return True
 
 
-def _get_repo_files(repo_id, repo_type="model"):
+def _get_repo_files(repo_id: str, repo_type: str = "model") -> list[dict[str, Any]]:
     """Get list of files and their sizes from a HuggingFace repo."""
     try:
         if repo_type == "model":
@@ -113,7 +114,7 @@ def _get_repo_files(repo_id, repo_type="model"):
         return []
 
 
-def _format_total_size(files):
+def _format_total_size(files: list[dict[str, Any]]) -> str:
     """Format total size from a list of file dicts."""
     total = sum(f.get("size", 0) or 0 for f in files)
     if total == 0:
@@ -121,7 +122,7 @@ def _format_total_size(files):
     return RichTqdm.format_size(total)
 
 
-def search_models(console: Console, query: str):
+def search_models(console: Console, query: str) -> str | None:
     if not _check_hf(console):
         return None
 
@@ -173,7 +174,7 @@ def search_models(console: Console, query: str):
     return models[idx].modelId
 
 
-def search_datasets(console: Console, query: str):
+def search_datasets(console: Console, query: str) -> str | None:
     if not _check_hf(console):
         return None
 
@@ -221,7 +222,7 @@ def search_datasets(console: Console, query: str):
     return datasets[idx].id
 
 
-def _show_file_sizes(console: Console, repo_id: str, repo_type="model"):
+def _show_file_sizes(console: Console, repo_id: str, repo_type: str = "model") -> bool:
     """Show file sizes before download and ask for confirmation."""
     files = _get_repo_files(repo_id, repo_type)
     if not files:
@@ -259,7 +260,7 @@ def _show_file_sizes(console: Console, repo_id: str, repo_type="model"):
     return confirmed if confirmed is not None else False
 
 
-def download_model(console: Console, model_id: str, cache_dir: str = None):
+def download_model(console: Console, model_id: str, cache_dir: str | None = None) -> str | None:
     if not _check_hf(console):
         return None
 
@@ -280,24 +281,24 @@ def download_model(console: Console, model_id: str, cache_dir: str = None):
         console.print()
         console.print(f"[green]Downloaded to: {path}[/]")
         return path
-    except Exception as e:
-        msg = str(e)
-        if "401" in msg or "403" in msg or "gated" in msg.lower():
+    except Exception as exc:
+        kind = _classify_hf_error(exc)
+        if kind == "auth":
             console.print(f"[red]Access denied: {model_id} may require authentication.[/]")
             console.print("[dim]Run: huggingface-cli login[/]")
-        elif "404" in msg or "not found" in msg.lower():
+        elif kind == "not_found":
             console.print(f"[red]Model not found: {model_id}[/]")
             console.print("[dim]Check the model ID and try again.[/]")
-        elif "connection" in msg.lower() or "timeout" in msg.lower():
+        elif kind == "network":
             console.print("[red]Network error. Check your internet connection.[/]")
-        elif "disk" in msg.lower() or "space" in msg.lower():
+        elif kind == "disk":
             console.print("[red]Not enough disk space to download this model.[/]")
         else:
-            console.print(f"[red]Download error: {msg}[/]")
+            console.print(f"[red]Download error: {exc}[/]")
         return None
 
 
-def download_dataset(console: Console, dataset_id: str, local_dir: str = None):
+def download_dataset(console: Console, dataset_id: str, local_dir: str | None = None) -> str | None:
     if not _check_hf(console):
         return None
 
@@ -319,23 +320,52 @@ def download_dataset(console: Console, dataset_id: str, local_dir: str = None):
         console.print()
         console.print(f"[green]Dataset downloaded to: {path}[/]")
         return path
-    except Exception as e:
-        msg = str(e)
-        if "401" in msg or "403" in msg or "gated" in msg.lower():
+    except Exception as exc:
+        kind = _classify_hf_error(exc)
+        if kind == "auth":
             console.print(f"[red]Access denied: {dataset_id} may require authentication.[/]")
             console.print("[dim]Run: huggingface-cli login[/]")
-        elif "404" in msg or "not found" in msg.lower():
+        elif kind == "not_found":
             console.print(f"[red]Dataset not found: {dataset_id}[/]")
-        elif "connection" in msg.lower() or "timeout" in msg.lower():
+        elif kind == "network":
             console.print("[red]Network error. Check your internet connection.[/]")
-        elif "disk" in msg.lower() or "space" in msg.lower():
+        elif kind == "disk":
             console.print("[red]Not enough disk space to download this dataset.[/]")
         else:
-            console.print(f"[red]Download error: {msg}[/]")
+            console.print(f"[red]Download error: {exc}[/]")
         return None
 
 
-def download_model_interactive(console: Console):
+def _classify_hf_error(exc: Exception):
+    """Classify a huggingface_hub error for user-friendly messages."""
+    from requests.exceptions import HTTPError, ConnectionError, Timeout
+
+    status = None
+    if isinstance(exc, HTTPError) and exc.response is not None:
+        status = exc.response.status_code
+
+    try:
+        from huggingface_hub.utils import GatedRepoError, RepositoryNotFoundError
+    except ImportError:
+        GatedRepoError = None
+        RepositoryNotFoundError = None
+
+    if GatedRepoError is not None and isinstance(exc, GatedRepoError):
+        return "auth"
+    if RepositoryNotFoundError is not None and isinstance(exc, RepositoryNotFoundError):
+        return "not_found"
+    if status in (401, 403):
+        return "auth"
+    if status == 404:
+        return "not_found"
+    if isinstance(exc, (ConnectionError, Timeout)):
+        return "network"
+    if isinstance(exc, OSError) and ("disk" in str(exc).lower() or "space" in str(exc).lower()):
+        return "disk"
+    return "unknown"
+
+
+def download_model_interactive(console: Console) -> None:
     console.print("\n[bold white]Download Model from HuggingFace[/bold white]\n")
     console.print("[dim]Enter a search query or a full model path (e.g. Qwen/Qwen3-0.6B):[/]")
     query = console.input("[dim]Search or model ID: [/]").strip()
@@ -355,7 +385,7 @@ def download_model_interactive(console: Console):
         console.print("[dim]The model will appear in the model list next time.[/]")
 
 
-def download_dataset_interactive(console: Console):
+def download_dataset_interactive(console: Console) -> None:
     console.print("\n[bold white]Download Dataset from HuggingFace[/bold white]\n")
     console.print("[dim]Enter a search query or a full dataset path (e.g. tatsu-lab/alpaca):[/]")
     query = console.input("[dim]Search or dataset ID: [/]").strip()
@@ -435,4 +465,4 @@ def _register_downloaded_dataset(console: Console, dataset_id: str, safe_name: s
         json.dump(registry, f, indent=2, ensure_ascii=False)
 
     console.print(f"[green]Dataset '{safe_name}' registered as {fmt} format.[/]")
-    console.print(f"[dim]It will appear in the dataset list next time.[/]")
+    console.print("[dim]It will appear in the dataset list next time.[/]")

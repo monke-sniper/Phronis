@@ -3,8 +3,6 @@ import json
 import os
 import tempfile
 
-import pytest
-import yaml
 
 from rich.console import Console
 
@@ -67,7 +65,6 @@ class TestBuildConfig:
 class TestRecordTraining:
     def test_records_training_history(self):
         import phronis.state as state_mod
-        import importlib
 
         fd, temp_path = tempfile.mkstemp(suffix=".yaml")
         os.close(fd)
@@ -93,7 +90,7 @@ class TestRecordTraining:
             assert "timestamp" in entry
         finally:
             state_mod.STATE_PATH = old_path
-            state_mod._state = None
+            state_mod._state = old_state
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 

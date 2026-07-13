@@ -1,6 +1,6 @@
 ﻿import os
 
-from .workspace import init_workspace
+from .workspace import get_workspace_path, _compute_workspace_dirs
 
 _pkg_dir = os.path.dirname(os.path.abspath(__file__))
 # Repo root is two levels above src/phronis
@@ -10,8 +10,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(_pkg_dir))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
 YAML_DIR = os.path.join(REPO_ROOT, "yaml")
 
-# Output directories (workspace-based)
-_workspace_path, _dirs = init_workspace()
+# Output directories (workspace-based) — computed without I/O side effects
+_workspace_path = get_workspace_path()
+_dirs = _compute_workspace_dirs(_workspace_path)
 PROJECT_ROOT = _workspace_path
 STATE_PATH = os.path.join(PROJECT_ROOT, ".phronis.yaml")
 SAVES_DIR = _dirs["saves"]

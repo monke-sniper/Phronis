@@ -8,8 +8,6 @@ These tests verify:
 - Output formatting
 """
 import os
-import sys
-import tempfile
 
 import pytest
 

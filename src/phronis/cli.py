@@ -1,3 +1,5 @@
+from typing import Any
+
 import io
 import json
 import os
@@ -71,7 +73,7 @@ MAIN_MENU = [
 ]
 
 
-def show_main_menu():
+def show_main_menu() -> str | None:
     try:
         return questionary.select(
             "What would you like to do?",
@@ -85,7 +87,7 @@ def show_main_menu():
         return "exit"
 
 
-def _print_breadcrumb(console, title, current, total):
+def _print_breadcrumb(console: Console, title: str, current: int, total: int) -> None:
     parts = []
     parts.append(f"[bold cyan]{title}[/bold cyan]")
     parts.append(f"[dim][{current}/{total}][/dim]")
@@ -115,7 +117,7 @@ SMART_DEFAULTS = {
 }
 
 
-def _compute_dtype_flags():
+def _compute_dtype_flags() -> dict[str, bool]:
     """Return dtype flags aligned with the local GPU / CPU setup.
 
     - CUDA + bf16 support  -> bf16=True
@@ -136,7 +138,7 @@ def _compute_dtype_flags():
         return {"bf16": False}
 
 
-def _build_config(model, template, dataset, epochs, finetuning_type, params, output_name, target_loss=None):
+def _build_config(model: str, template: str, dataset: str, epochs: float, finetuning_type: str, params: dict[str, Any], output_name: str, target_loss: float | None = None) -> dict[str, Any]:
     config = {
         "model_name_or_path": model,
         "template": template,
@@ -170,7 +172,7 @@ def _build_config(model, template, dataset, epochs, finetuning_type, params, out
     return config
 
 
-def _record_training(output_name, model, dataset, stage, epochs, template):
+def _record_training(output_name: str, model: str, dataset: str, stage: str, epochs: float, template: str) -> None:
     state = get_state()
     state.active_model = model
     state.active_dataset = dataset.split(",")[0].strip() if dataset else ""
@@ -178,6 +180,7 @@ def _record_training(output_name, model, dataset, stage, epochs, template):
     state.active_adapter = os.path.join("saves", output_name, "lora")
     record = {
         "name": output_name,
+        "output_name": output_name,
         "model": model,
         "adapter": os.path.join("saves", output_name, "lora"),
         "template": template,
@@ -198,7 +201,7 @@ def _record_training(output_name, model, dataset, stage, epochs, template):
         pass
 
 
-def _write_config_and_train(console, config, output_name, command="train", target_loss=None, **cli_args):
+def _write_config_and_train(console: Console, config: dict[str, Any], output_name: str, command: str = "train", target_loss: float | None = None, **cli_args) -> bool:
     os.makedirs(CONFIGS_DIR, exist_ok=True)
     config_path = os.path.join(CONFIGS_DIR, f"phronis_{output_name}.yaml")
 
@@ -217,8 +220,7 @@ def _write_config_and_train(console, config, output_name, command="train", targe
     return run_training(console, config_path, output_name, target_loss=target_loss)
 
 
-def quick_train(console):
-    state = get_state()
+def quick_train(console: Console) -> None:
     steps = ["model", "dataset", "epochs", "target_loss", "confirm"]
     step_idx = 0
     data = {}
@@ -310,8 +312,7 @@ def quick_train(console):
             return
 
 
-def advanced_train(console):
-    state = get_state()
+def advanced_train(console: Console) -> None:
     steps = ["model", "dataset", "stage", "finetuning_type", "params", "target_loss", "output_name", "confirm"]
     step_idx = 0
     data = {}
@@ -433,7 +434,7 @@ def advanced_train(console):
             return
 
 
-def chat_trained(console):
+def chat_trained(console: Console) -> None:
     state = get_state()
     console.print("\n[bold white]Chat with Trained Model[/bold white]\n")
 
@@ -459,7 +460,7 @@ def chat_trained(console):
     _start_chat(console, model, adapter or None, template)
 
 
-def quick_chat(console):
+def quick_chat(console: Console) -> None:
     console.print("\n[bold white]Quick Chat[/bold white]\n")
     model, adapter, template = prompt_chat_model(console, allow_back=False)
     if not model:
@@ -471,7 +472,7 @@ def quick_chat(console):
     _start_chat(console, model, adapter, template)
 
 
-def _start_chat(console, model, adapter, template):
+def _start_chat(console: Console, model: str, adapter: str | None, template: str) -> None:
     label = f"{model} + {adapter}" if adapter else model
     console.print(f"\n[bold white]Chat with {label}[/bold white]")
     console.print("[dim]Type messages. /quit to exit, /clear to reset.[/dim]\n")
@@ -494,9 +495,9 @@ def _start_chat(console, model, adapter, template):
     try:
         with console.status("[bold green]Loading model into memory...", spinner="dots"):
             chat_model = ChatModel(config)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         console.print(f"[red]Model not found locally: {model}[/]")
-        console.print(f"[dim]Use 'Download Model' from the menu to download it first.[/]")
+        console.print("[dim]Use 'Download Model' from the menu to download it first.[/]")
         return
     except MemoryError:
         console.print("[red]Not enough system memory. Try a smaller model or use a GPU.[/]")
@@ -546,7 +547,7 @@ def _start_chat(console, model, adapter, template):
             console.print(f"\n[red]Error during generation: {e}[/]")
 
 
-def yaml_train_screen(console):
+def yaml_train_screen(console: Console) -> None:
     console.print("\n[bold white]Train from YAML[/bold white]\n")
     if not os.path.isdir(YAML_DIR):
         os.makedirs(YAML_DIR, exist_ok=True)
@@ -620,7 +621,7 @@ def yaml_train_screen(console):
             return
 
 
-def view_models_screen(console):
+def view_models_screen(console: Console) -> None:
     models = _list_cached_models()
     state = get_state()
     console.print(f"\n[bold white]Cached Models ({len(models)})[/bold white]\n")
@@ -650,14 +651,14 @@ def view_models_screen(console):
         pass
 
 
-def view_datasets_screen(console):
+def view_datasets_screen(console: Console) -> None:
     from . import DATA_DIR
 
     datasets = _list_datasets()
     state = get_state()
     console.print(f"\n[bold white]Available Datasets ({len(datasets)})[/bold white]\n")
     if not datasets:
-        console.print(f"[dim]No datasets found.[/]")
+        console.print("[dim]No datasets found.[/]")
         console.print(f"[dim]Drop .json or .jsonl files in {DATA_DIR}[/]")
         console.print("[dim]Or use 'Add Dataset' from the menu to register one.[/]")
         return
@@ -686,7 +687,7 @@ def view_datasets_screen(console):
         pass
 
 
-def add_dataset_screen(console):
+def add_dataset_screen(console: Console) -> None:
     from . import DATA_DIR, DATASET_INFO
     steps = ["name", "source", "details", "confirm"]
     step_idx = 0
@@ -786,7 +787,7 @@ def add_dataset_screen(console):
             return
 
 
-def export_screen(console):
+def export_screen(console: Console) -> None:
     state = get_state()
     steps = ["adapter", "dest", "confirm"]
     step_idx = 0
@@ -854,7 +855,7 @@ def export_screen(console):
             return
 
 
-def workspace_info_screen(console):
+def workspace_info_screen(console: Console) -> None:
     from . import PROJECT_ROOT, DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR, YAML_DIR
     console.print("\n[bold white]Workspace Info[/bold white]\n")
     console.print(f"[bold]Project root:[/] [dim]{PROJECT_ROOT}[/]")
@@ -892,7 +893,7 @@ def workspace_info_screen(console):
     console.print(table)
 
 
-def system_check_screen(console):
+def system_check_screen(console: Console) -> None:
     import shutil
     import sys as _sys
 
@@ -957,7 +958,7 @@ def system_check_screen(console):
     console.print(table)
 
 
-def _ensure_directories():
+def _ensure_directories() -> None:
     from . import CONFIGS_DIR, DATA_DIR, MODELS_DIR, SAVES_DIR, DATASET_INFO, YAML_DIR
 
     for d in (DATA_DIR, SAVES_DIR, MODELS_DIR, CONFIGS_DIR, YAML_DIR):
@@ -985,7 +986,7 @@ def _ensure_directories():
             json.dump({}, f, indent=2)
 
 
-def interactive_loop():
+def interactive_loop() -> None:
     _ensure_directories()
     reload_state()
     while True:
@@ -1060,7 +1061,7 @@ def main(
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress non-essential output"),
     verbose: bool = typer.Option(False, "--verbose", "--debug", help="Verbose output"),
     no_input: bool = typer.Option(False, "--no-input", help="Disable interactive prompts (non-TTY / CI mode)"),
-):
+) -> None:
     global console, _quiet, _verbose, _no_input
 
     _quiet = quiet
@@ -1098,7 +1099,7 @@ def main(
         interactive_loop()
 
 
-def _check_first_run(console):
+def _check_first_run(console: Console) -> None:
     from . import PROJECT_ROOT
     marker = os.path.join(PROJECT_ROOT, ".phronis.yaml")
     if not os.path.isfile(marker):
@@ -1112,7 +1113,7 @@ def _check_first_run(console):
 
 
 @app.command()
-def setup():
+def setup() -> None:
     """Run system check and install missing dependencies."""
     run_bootstrap(console)
 
@@ -1138,7 +1139,7 @@ def train(
     scheduler: str = typer.Option("cosine", "--scheduler", help="LR scheduler type (cosine/linear/constant)"),
     method: str = typer.Option("lora", "--method", help="Finetuning method: lora/full/freeze"),
     target_loss: float = typer.Option(None, "--target-loss", help="Stop training when loss reaches approximately this value"),
-):
+) -> None:
     output_name = output or f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     config = {
         "model_name_or_path": model,
@@ -1200,7 +1201,7 @@ def train(
         **extra_args,
     )
     if success:
-        console.print(f"\n[green]Training complete![/]")
+        console.print("\n[green]Training complete![/]")
         _record_training(output_name, model, dataset, stage, epochs, template)
         if push_to_hub:
             _push_to_hub(console, config["output_dir"])
@@ -1215,8 +1216,8 @@ def _push_to_hub(console: Console, adapter_path: str):
         return
     try:
         from huggingface_hub import HfApi
-        api = HfApi()
-        repo_id = input("HuggingFace repo ID to push to (org/name): ").strip()
+        HfApi()
+        repo_id = console.input("[dim]HuggingFace repo ID to push to (org/name): [/]").strip()
         if not repo_id:
             console.print("[yellow]No repo ID provided. Skipping push.[/]")
             return
@@ -1235,7 +1236,7 @@ def chat(
     template: str = typer.Option(None, "--template", "-t", help="Chat template"),
     message: str = typer.Option(None, "--message", help="Single message: non-interactive mode"),
     max_tokens: int = typer.Option(512, "--max-tokens", help="Max generation tokens"),
-):
+) -> None:
     """Chat with a model. Interactive by default, or single-shot with --message."""
     state = get_state()
     model_path = model or state.active_model or "Qwen/Qwen3-0.6B"
@@ -1273,7 +1274,7 @@ def chat(
         # Single-shot mode
         messages = [{"role": "user", "content": message}]
         console.print(f"\n[bold cyan]You:[/] {message}\n")
-        console.print(f"[bold green]Assistant:[/] ", end="")
+        console.print("[bold green]Assistant:[/] ", end="")
         try:
             response = ""
             for token in chat_model.stream_chat(messages):
@@ -1286,6 +1287,7 @@ def chat(
         return
 
     # Interactive mode
+    _no_input_guard("Use --message for single-shot non-interactive chat.")
     messages = []
     console.print("[dim]Type /quit or /exit to quit. /clear to start a new chat.[/]\n")
     while True:
@@ -1307,7 +1309,7 @@ def chat(
         messages.append({"role": "user", "content": text})
         try:
             response = ""
-            console.print(f"[bold green]Assistant:[/] ", end="")
+            console.print("[bold green]Assistant:[/] ", end="")
             for token in chat_model.stream_chat(messages):
                 response += token
                 console.print(token, end="")
@@ -1324,7 +1326,7 @@ def export(
     output: str = typer.Option(None, "--output", "-o", help="Export destination directory"),
     template: str = typer.Option(None, "--template", "-t", help="Chat template"),
     size: int = typer.Option(2, "--size", help="Shard size in GB"),
-):
+) -> None:
     """Merge a LoRA adapter into a standalone model."""
     state = get_state()
     model_path = model or state.active_model or "Qwen/Qwen3-0.6B"
@@ -1356,7 +1358,7 @@ def export(
 def yaml_train(
     config: str = typer.Argument(..., help="Path to YAML config, or filename inside yaml/"),
     output: str = typer.Option("", "--output", "-o", help="Output name"),
-):
+) -> None:
     """Train a model from an existing YAML config file."""
     # Resolve path
     candidate = os.path.join(YAML_DIR, config)
@@ -1379,19 +1381,29 @@ def yaml_train(
         raise typer.Exit(1)
 
 
-@app.command()
-def download(
-    type: str = typer.Argument(..., help="Type to download: model or dataset"),
-    name: str = typer.Argument(..., help="HuggingFace repo ID"),
-    no_confirm: bool = typer.Option(False, "--no-confirm", help="Skip confirmation prompt"),
-):
-    """Download a model or dataset from HuggingFace."""
-    type_lower = type.lower()
-    if type_lower not in ("model", "dataset"):
-        console.print(f"[red]Invalid type '{type}'. Must be 'model' or 'dataset'.[/]")
+def _no_input_guard(command_hint: str) -> None:
+    if _no_input:
+        console.print("[red]--no-input is active but this command requires interactivity.[/]")
+        console.print(f"[dim]Hint: {command_hint}[/]")
         raise typer.Exit(1)
 
-    if type_lower == "model":
+
+@app.command()
+def download(
+    kind: str = typer.Argument(..., help="Type to download: model or dataset"),
+    name: str = typer.Argument(..., help="HuggingFace repo ID"),
+    no_confirm: bool = typer.Option(False, "--no-confirm", help="Skip confirmation prompt"),
+) -> None:
+    """Download a model or dataset from HuggingFace."""
+    kind_lower = kind.lower()
+    if kind_lower not in ("model", "dataset"):
+        console.print(f"[red]Invalid kind '{kind}'. Must be 'model' or 'dataset'.[/]")
+        raise typer.Exit(1)
+
+    if not no_confirm:
+        _no_input_guard("Use --no-confirm to skip the confirmation prompt.")
+
+    if kind_lower == "model":
         if no_confirm:
             # Bypass interactive confirmation by calling snapshot_download directly
             console.print(f"[dim]Downloading model {name}...[/]")
@@ -1432,7 +1444,7 @@ def download(
 def list(
     what: str = typer.Argument("models", help="What to list: models, datasets, history, adapters"),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
-):
+) -> None:
     """List cached models, datasets, training history, or adapters."""
     what_lower = what.lower()
 
@@ -1531,7 +1543,7 @@ def add_dataset(
     file: str = typer.Option(None, "--file", help="Local filename in data/"),
     hf_url: str = typer.Option(None, "--hf-url", help="HuggingFace dataset URL"),
     format: str = typer.Option("alpaca", "--format", help="Format: alpaca or sharegpt"),
-):
+) -> None:
     """Register a dataset (local file or HuggingFace URL)."""
     if file and hf_url:
         console.print("[red]Cannot specify both --file and --hf-url.[/]")
@@ -1563,7 +1575,7 @@ def add_dataset(
 @app.command()
 def info(
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
-):
+) -> None:
     """Show workspace info, active model/dataset, and directory sizes."""
     state = get_state()
     dirs_info = {}
@@ -1624,7 +1636,7 @@ def info(
 @app.command()
 def doctor(
     fix: bool = typer.Option(False, "--fix", help="Auto-install missing dependencies"),
-):
+) -> None:
     """Run a full system diagnostic (like brew doctor)."""
     from . import PROJECT_ROOT
     console.print("\n[bold white]phronis Doctor[/bold white]\n")
@@ -1699,7 +1711,7 @@ def doctor(
 @app.command()
 def update(
     check: bool = typer.Option(False, "--check", help="Only check for updates, don't install"),
-):
+) -> None:
     """Self-update via pip install --upgrade."""
     console.print("[bold]phronis Update[/bold]\n")
 
@@ -1750,7 +1762,7 @@ def update(
 def clean(
     what: str = typer.Argument("all", help="What to clean: configs, cache, saves, all"),
     force: bool = typer.Option(False, "--force", help="Skip confirmation"),
-):
+) -> None:
     """Clean up workspace: remove old configs, cache files, or saves."""
     what_lower = what.lower()
     valid = ("configs", "cache", "saves", "all")
@@ -1773,7 +1785,7 @@ def clean(
         return
 
     if not force:
-        console.print(f"[yellow]Will delete:[/]")
+        console.print("[yellow]Will delete:[/]")
         for label, path in targets:
             console.print(f"  {label}: {path}")
         try:
@@ -1796,7 +1808,7 @@ def clean(
             console.print(f"[dim]{label} not found: {path}[/]")
 
 
-def entry():
+def entry() -> None:
     """Entry point with transparent isolated-env forwarding."""
     from .env_setup import (
         ensure_isolated_venv,
@@ -1822,7 +1834,13 @@ def entry():
     if ensure_isolated_venv(console):
         console.print("[green]Environment ready — restarting inside isolated venv...[/]\n")
         result = forward_to_venv()
-        if result is not None and result.returncode != 0:
+        if result is None:
+            console.print(
+                "[red]Could not launch phronis inside isolated venv. "
+                "Try deleting ~/.phronisworkspace/.venv and re-running.[/]"
+            )
+            sys.exit(1)
+        if result.returncode != 0:
             sys.exit(result.returncode)
         sys.exit(0)
     else:

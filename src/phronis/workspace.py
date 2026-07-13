@@ -1,6 +1,4 @@
-import shutil
 
-import json
 import os
 import yaml
 
@@ -173,7 +171,7 @@ Saved YAML configs can be placed in yaml/ and selected via "Train from YAML".
 """
 
 
-def get_workspace_path():
+def get_workspace_path() -> str:
     if env_path := os.environ.get("PHRONIS_WORKSPACE"):
         return os.path.abspath(env_path)
 
@@ -189,7 +187,7 @@ def get_workspace_path():
     return DEFAULT_WORKSPACE
 
 
-def set_workspace_path(path):
+def set_workspace_path(path: str) -> str:
     path = os.path.abspath(os.path.expanduser(path))
     os.makedirs(path, exist_ok=True)
     config = {"workspace_path": path}
@@ -199,29 +197,35 @@ def set_workspace_path(path):
     return path
 
 
-def ensure_workspace_dirs(workspace_path):
-    dirs = {
+def _compute_workspace_dirs(workspace_path):
+    return {
         "saves": os.path.join(workspace_path, "saves"),
         "models": os.path.join(workspace_path, "models"),
         "configs": os.path.join(workspace_path, "configs"),
     }
+
+
+def ensure_workspace_dirs(workspace_path: str) -> dict[str, str]:
+    dirs = _compute_workspace_dirs(workspace_path)
     for d in dirs.values():
         os.makedirs(d, exist_ok=True)
+    return dirs
 
+
+def write_workspace_guide(workspace_path: str) -> None:
     guide_path = os.path.join(workspace_path, "GUIDE.md")
     if not os.path.isfile(guide_path):
         with open(guide_path, "w", encoding="utf-8") as f:
             f.write(GUIDE_CONTENT)
 
-    return dirs
 
-
-def init_workspace():
+def init_workspace() -> tuple[str, dict[str, str]]:
     workspace_path = get_workspace_path()
     dirs = ensure_workspace_dirs(workspace_path)
+    write_workspace_guide(workspace_path)
     return workspace_path, dirs
 
 
-def sync_demo_datasets(bundled_data_dir, bundled_dataset_info, data_dir, dataset_info_path):
+def sync_demo_datasets(bundled_data_dir: str, bundled_dataset_info: str, data_dir: str, dataset_info_path: str) -> None:
     """No-op: data is now centrally managed in the repo root data/ folder."""
     pass

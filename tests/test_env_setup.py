@@ -4,7 +4,6 @@ import subprocess
 import sys
 import tempfile
 
-import pytest
 from rich.console import Console
 
 
@@ -62,7 +61,6 @@ class TestIsInsideIsolatedVenv:
 
 class TestEnsureIsolatedVenv:
     def test_reuses_existing_venv(self, monkeypatch):
-        import phronis.env_setup as es
         from phronis.env_setup import ensure_isolated_venv
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,6 +72,10 @@ class TestEnsureIsolatedVenv:
 
             monkeypatch.setattr(
                 "phronis.env_setup.get_workspace_path", lambda: tmp
+            )
+            # Short-circuit package checks so we don't try to run the fake exe
+            monkeypatch.setattr(
+                "phronis.env_setup._venv_has_package", lambda _py, _pkg: True
             )
             # Should short-circuit without calling any subprocesses
             assert ensure_isolated_venv(_dummy_console()) is True
@@ -100,16 +102,15 @@ class TestForwardToVenv:
                 "phronis.env_setup.get_workspace_path", lambda: tmp
             )
             result = forward_to_venv(["phronis", "--version"])
-            assert result is False
+            assert result is None
 
 
 class TestBootstrapInstallMissing:
     def test_torch_install_includes_cuda_index(self, monkeypatch):
         from phronis.bootstrap import _install_missing
-        import phronis.bootstrap as boot
 
         captures = []
-        original_run = subprocess.run
+        _original_run = subprocess.run
 
         def _capture(*args, **kwargs):
             captures.append(args)

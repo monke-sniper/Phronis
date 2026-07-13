@@ -2,7 +2,6 @@ import io
 import os
 import tempfile
 
-import pytest
 import yaml
 from rich.console import Console
 from typer.testing import CliRunner

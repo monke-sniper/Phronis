@@ -7,12 +7,12 @@ from rich.console import Console
 from rich.table import Table
 
 
-def check_python_version():
+def check_python_version() -> tuple[bool, str]:
     ok = sys.version_info >= (3, 11)
     return ok, f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
 
-def check_package(pkg_name, import_name=None):
+def check_package(pkg_name: str, import_name: str | None = None) -> tuple[bool, str]:
     imp = import_name or pkg_name
     try:
         __import__(imp)
@@ -21,7 +21,7 @@ def check_package(pkg_name, import_name=None):
         return False, "not installed"
 
 
-def check_llamafactory_cli():
+def check_llamafactory_cli() -> tuple[bool, str]:
     cli = shutil.which("llamafactory-cli")
     if cli:
         return True, cli
@@ -35,7 +35,7 @@ def check_llamafactory_cli():
     return False, "not found"
 
 
-def check_gpu():
+def check_gpu() -> tuple[str, str]:
     try:
         import torch
         if torch.cuda.is_available():
@@ -51,12 +51,12 @@ def check_gpu():
         return "unknown", "torch not installed"
 
 
-def check_hf_cli():
+def check_hf_cli() -> tuple[bool, str]:
     cli = shutil.which("huggingface-cli")
     return bool(cli), cli or "not found"
 
 
-def run_bootstrap(console: Console, force=False):
+def run_bootstrap(console: Console, force: bool = False) -> bool:
     """Run bootstrap setup. Asks for confirmation unless force=True."""
     console.print("\n[bold white]phronis Setup[/bold white]\n")
 
@@ -95,16 +95,11 @@ def run_bootstrap(console: Console, force=False):
     table.add_column("Status", width=8)
     table.add_column("Details", style="dim")
 
-    all_ok = True
     for name, ok, details in checks:
         if name in ("GPU",):
             status = "[green]OK[/]" if ok else "[yellow]CPU[/]"
-            if not ok:
-                all_ok = False
         else:
             status = "[green]OK[/]" if ok else "[red]FAIL[/]"
-            if not ok:
-                all_ok = False
         table.add_row(name, status, details)
 
     console.print(table)

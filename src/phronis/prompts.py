@@ -380,8 +380,8 @@ def prompt_model(console: Console, allow_back: bool = False):
     while True:
         cached = _list_cached_models()
         if not cached:
-            console.print(f"[yellow]No cached models found.[/]")
-            console.print(f"[dim]Use 'Download Model' from the menu to search HuggingFace.[/]")
+            console.print("[yellow]No cached models found.[/]")
+            console.print("[dim]Use 'Download Model' from the menu to search HuggingFace.[/]")
             path = console.input("[dim]Or enter a HuggingFace model ID (e.g. Qwen/Qwen3-0.6B): [/]").strip()
             if not path:
                 return ("__back__", None) if allow_back else (None, None)
@@ -461,7 +461,7 @@ def prompt_dataset(console: Console, allow_back: bool = False):
     if not datasets:
         demo_datasets = _list_demo_datasets()
         if demo_datasets:
-            console.print(f"[yellow]No personal datasets found.[/]")
+            console.print("[yellow]No personal datasets found.[/]")
             console.print(f"[dim]You can use a built-in demo dataset below, drop files in {DATA_DIR}, or use 'Add Dataset'.[/]")
             console.print()
             choices = []
@@ -500,7 +500,7 @@ def prompt_dataset(console: Console, allow_back: bool = False):
                     filtered.append(custom)
             return ",".join(filtered) if filtered else None
 
-        console.print(f"[yellow]No datasets found.[/]")
+        console.print("[yellow]No datasets found.[/]")
         console.print(f"[dim]Drop .json or .jsonl files in {DATA_DIR}[/]")
         console.print("[dim]Format: [{instruction: ..., output: ...}, ...] for alpaca, or [{messages: [...]}] for sharegpt[/]")
         console.print()
@@ -647,7 +647,7 @@ def _input_int(console, label, default, allow_back: bool = False):
     prompt_text = f"[dim]{label} (default {default}"
     if allow_back:
         prompt_text += ", or type 'back'"
-    prompt_text += f"): [/]"
+    prompt_text += "): [/]"
     val = console.input(prompt_text).strip()
     if allow_back and val.lower() in ("back", "b"):
         return "__back__"
@@ -664,7 +664,7 @@ def _input_float(console, label, default, allow_back: bool = False):
     prompt_text = f"[dim]{label} (default {default}"
     if allow_back:
         prompt_text += ", or type 'back'"
-    prompt_text += f"): [/]"
+    prompt_text += "): [/]"
     val = console.input(prompt_text).strip()
     if allow_back and val.lower() in ("back", "b"):
         return "__back__"
