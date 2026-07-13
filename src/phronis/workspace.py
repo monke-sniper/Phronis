@@ -8,23 +8,20 @@ CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".phronisworkspace", "worksp
 GUIDE_CONTENT = """# phronis Guide
 
 ## Workspace
-Your workspace is the central location for all phronis output files (saves, models, configs).
+Your workspace is the central location for ALL phronis files — datasets, configs, saves, models.
 Default: ~/.phronisworkspace/
 
 ### Structure
     ~/.phronisworkspace/
     ├── workspace.yaml      # workspace config
-    ├── .phronis.yaml      # app state
+    ├── .phronis.yaml       # app state
+    ├── data/               # datasets (drop .json files here)
+    │   ├── dataset_info.json
+    │   └── README.txt
+    ├── yaml/               # saved YAML training configs
     ├── saves/              # LoRA adapters + checkpoints
     ├── models/             # exported / merged models
     └── configs/            # auto-generated YAML from training runs
-
-## Central Data Directories (repo-level)
-    <repo_root>/
-    ├── data/               # ONE central data folder — drop datasets here
-    │   ├── dataset_info.json
-    │   └── README.txt
-    └── yaml/               # saved YAML training configs
 
 ## How to Change Workspace Location
 Edit workspace.yaml:
@@ -43,7 +40,7 @@ Supports optional target-loss training.
 Full control over all hyperparameters plus optional target-loss training.
 
 ### 3. Train from YAML
-Select a saved YAML config from the central yaml/ folder and train directly.
+Select a saved YAML config from the yaml/ folder and train directly.
 
 ### 4. Chat Trained Model
 Instantly chat with your last fine-tune.
@@ -202,6 +199,8 @@ def _compute_workspace_dirs(workspace_path):
         "saves": os.path.join(workspace_path, "saves"),
         "models": os.path.join(workspace_path, "models"),
         "configs": os.path.join(workspace_path, "configs"),
+        "data": os.path.join(workspace_path, "data"),
+        "yaml": os.path.join(workspace_path, "yaml"),
     }
 
 
@@ -219,13 +218,77 @@ def write_workspace_guide(workspace_path: str) -> None:
             f.write(GUIDE_CONTENT)
 
 
+def _copy_bundled_datasets(bundled_data_dir: str, data_dir: str, dataset_info_path: str) -> None:
+    """Copy bundled demo datasets from the package into the workspace data dir."""
+    import json as _json
+    import shutil
+
+    if not os.path.isdir(bundled_data_dir):
+        return
+
+    os.makedirs(data_dir, exist_ok=True)
+
+    # Copy each .json/.jsonl file from bundled dir
+    for fname in os.listdir(bundled_data_dir):
+        if fname.endswith(".json") or fname.endswith(".jsonl"):
+            src = os.path.join(bundled_data_dir, fname)
+            dst = os.path.join(data_dir, fname)
+            if not os.path.isfile(dst):
+                shutil.copy2(src, dst)
+
+    # Merge bundled dataset_info into workspace if workspace one is missing/empty
+    bundled_info = os.path.join(bundled_data_dir, "dataset_info.json")
+    if os.path.isfile(bundled_info):
+        registry = {}
+        if os.path.isfile(dataset_info_path):
+            try:
+                with open(dataset_info_path, "r", encoding="utf-8") as f:
+                    registry = _json.load(f)
+            except (_json.JSONDecodeError, OSError):
+                registry = {}
+
+        try:
+            with open(bundled_info, "r", encoding="utf-8") as f:
+                bundled_registry = _json.load(f)
+        except (_json.JSONDecodeError, OSError):
+            bundled_registry = {}
+
+        # Add bundled entries that aren't already in workspace
+        changed = False
+        for name, entry in bundled_registry.items():
+            # Skip if already in workspace registry
+            if name in registry:
+                # But make sure columns mapping is present (migration fix)
+                if isinstance(entry, dict) and "columns" in entry:
+                    if "columns" not in registry[name]:
+                        registry[name]["columns"] = entry["columns"]
+                        changed = True
+                continue
+            registry[name] = entry
+            changed = True
+
+        if changed:
+            with open(dataset_info_path, "w", encoding="utf-8") as f:
+                _json.dump(registry, f, indent=2, ensure_ascii=False)
+
+
 def init_workspace() -> tuple[str, dict[str, str]]:
     workspace_path = get_workspace_path()
     dirs = ensure_workspace_dirs(workspace_path)
     write_workspace_guide(workspace_path)
+
+    # Copy bundled demo datasets into workspace data/ on first run
+    from . import BUNDLED_DATA_SOURCE, DATA_DIR, DATASET_INFO
+    sync_demo_datasets(
+        bundled_data_dir=BUNDLED_DATA_SOURCE,
+        bundled_dataset_info=os.path.join(BUNDLED_DATA_SOURCE, "dataset_info.json"),
+        data_dir=DATA_DIR,
+        dataset_info_path=DATASET_INFO,
+    )
+
     return workspace_path, dirs
 
 
 def sync_demo_datasets(bundled_data_dir: str, bundled_dataset_info: str, data_dir: str, dataset_info_path: str) -> None:
-    """No-op: data is now centrally managed in the repo root data/ folder."""
-    pass
+    """Copy bundled demo datasets from the package into the workspace data folder."""
+    _copy_bundled_datasets(bundled_data_dir, data_dir, dataset_info_path)
