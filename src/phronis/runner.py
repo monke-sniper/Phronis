@@ -173,6 +173,16 @@ def _restore_checkpoint(console, output_dir, best_step, target_loss):
 
 
 def run_training(console: Console, config_path: str, output_name: str, target_loss: float = None) -> bool:
+    # Warn if training will be CPU-only
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            console.print("[yellow]WARNING: PyTorch is running on CPU. Training will be very slow.[/]")
+            console.print("[dim]Run [bold]phronis repair[/bold] to rebuild the environment with CUDA support.[/]")
+            console.print()
+    except Exception:
+        pass
+
     # Load config to find output_dir
     cfg = {}
     try:

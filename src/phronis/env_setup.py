@@ -101,6 +101,26 @@ def _is_torch_compatible(python_exe: str):
         return False
 
 
+def _venv_has_cpu_torch(venv_py: str) -> bool:
+    """Return True if the venv has torch installed but it's CPU-only."""
+    try:
+        result = subprocess.run(
+            [venv_py, "-c", "import torch; print('CPU' if torch.version.cuda is None else 'CUDA')"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip() == "CPU"
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+    return False
+
+
+def _machine_has_gpu() -> bool:
+    """Return True if the machine appears to have an NVIDIA GPU."""
+    import shutil
+    return shutil.which("nvidia-smi") is not None
+
+
 def _find_compatible_python():
     """Find a Python 3.11–3.13 executable that supports CUDA wheels.
 
@@ -235,6 +255,37 @@ def ensure_isolated_venv(console: Console) -> bool:
         return False
 
     _create_wrapper_script(console, venv_dir)
+
+    # Phase 4 — verify venv torch is CUDA-capable on GPU machines.
+    # Installing phronis/llamafactory can clobber a CUDA torch with CPU-only wheels.
+    if _venv_has_cpu_torch(venv_py):
+        if _machine_has_gpu():
+            console.print(
+                "[yellow]Workspace venv has CPU-only PyTorch but an NVIDIA GPU was detected. "
+                "Reinstalling CUDA version...[/]"
+            )
+            try:
+                subprocess.run(
+                    [
+                        venv_pip, "install", "--force-reinstall",
+                        "torch", "torchvision", "torchaudio",
+                        "--index-url", "https://download.pytorch.org/whl/cu124",
+                    ],
+                    check=True, timeout=900,
+                )
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                console.print(
+                    "[red]Failed to reinstall CUDA PyTorch. GPU training will be very slow.[/]"
+                )
+            else:
+                if _venv_has_cpu_torch(venv_py):
+                    console.print(
+                        "[red]Torch is still CPU-only after reinstall. "
+                        "Check your GPU drivers.[/]"
+                    )
+        else:
+            console.print("[dim]No GPU detected; CPU-only PyTorch is correct.[/]")
+
     return True
 
 

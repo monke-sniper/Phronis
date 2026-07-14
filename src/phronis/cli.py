@@ -169,9 +169,7 @@ def _warn_if_cpu_only(console: Console) -> None:
     except Exception:
         return
     console.print("[yellow]WARNING: PyTorch is running on CPU. Training will be very slow.[/]")
-    console.print("[dim]If you have an NVIDIA GPU, reinstall CUDA PyTorch:[/]")
-    console.print("[dim]  pip uninstall torch torchvision torchaudio -y[/]")
-    console.print("[dim]  pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124[/]")
+    console.print("[dim]Run [bold]phronis repair[/bold] to rebuild the environment with CUDA support.[/]")
     console.print()
 
 
@@ -1425,7 +1423,33 @@ def yaml_train(
 
     output_name = output or f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     console.print(f"[dim]Training from YAML: {config_path}[/]")
+
+    # Patch platform-specific safety values into YAML before training
+    _safe = _get_workers_and_pin_memory()
+    _needs_patch = False
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            _yaml_cfg = yaml.safe_load(f) or {}
+        for _key, _safe_val in _safe.items():
+            if _yaml_cfg.get(_key) != _safe_val:
+                _yaml_cfg[_key] = _safe_val
+                _needs_patch = True
+        if _needs_patch:
+            import tempfile
+            _fd, _tmp_path = tempfile.mkstemp(suffix=".yaml")
+            with os.fdopen(_fd, "w", encoding="utf-8") as f:
+                yaml.dump(_yaml_cfg, f, default_flow_style=False, allow_unicode=True)
+            console.print(f"[dim]Patched {', '.join(_safe.keys())} for this platform.[/]")
+            config_path = _tmp_path
+    except Exception:
+        _needs_patch = False
+
     success = run_training(console, config_path, output_name)
+    if _needs_patch:
+        try:
+            os.unlink(config_path)
+        except Exception:
+            pass
     if success:
         console.print(f"\n[green]Training complete! Output: saves/{output_name}/lora[/]")
     else:
