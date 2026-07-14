@@ -514,6 +514,69 @@ def quick_chat(console: Console) -> None:
     _start_chat(console, model, adapter, template)
 
 
+_TOKENIZER_CLASS_MAP = {
+    "qwen2": "Qwen2TokenizerFast",
+    "qwen3": "Qwen2TokenizerFast",
+    "qwen2_vl": "Qwen2TokenizerFast",
+    "qwen2_audio": "Qwen2TokenizerFast",
+    "llama": "LlamaTokenizerFast",
+    "mistral": "LlamaTokenizerFast",
+    "falcon": "LlamaTokenizerFast",
+    "deepseek": "LlamaTokenizerFast",
+    "deepseek_v2": "LlamaTokenizerFast",
+    "deepseek_v3": "LlamaTokenizerFast",
+    "gpt2": "GPT2TokenizerFast",
+    "gpt_bigcode": "GPT2TokenizerFast",
+}
+
+
+def _fix_tokenizer_class(model_path):
+    # Fix wrong tokenizer_class in model config.
+    # Some model conversions (e.g. unsloth) ship Qwen2 models with
+    # tokenizer_class=LlamaTokenizerFast, which breaks byte-level BPE
+    # decoding (spaces lost, raw BPE chars in output).
+    import json
+    from pathlib import Path
+
+    # Try cache lookup
+    cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
+    for entry in cache_dir.iterdir():
+        if not entry.is_dir() or "--" not in entry.name:
+            continue
+        repo_id = "/".join(entry.name.split("--")[1:])
+        if repo_id.lower() != model_path.lower():
+            continue
+        snapshots = entry / "snapshots"
+        if not snapshots.is_dir():
+            continue
+        for snap in sorted(snapshots.iterdir(), reverse=True):
+            cfg_path = snap / "config.json"
+            tok_cfg_path = snap / "tokenizer_config.json"
+            if not cfg_path.is_file() or not tok_cfg_path.is_file():
+                continue
+            with open(cfg_path, encoding="utf-8") as f:
+                cfg = json.load(f)
+            model_type = cfg.get("model_type", "")
+            expected_class = _TOKENIZER_CLASS_MAP.get(model_type)
+            if not expected_class:
+                return
+            with open(tok_cfg_path, encoding="utf-8") as f:
+                tok_cfg = json.load(f)
+            tok_class = tok_cfg.get("tokenizer_class", "")
+            if tok_class != expected_class:
+                tok_cfg["tokenizer_class"] = expected_class
+                with open(tok_cfg_path, "w", encoding="utf-8") as f:
+                    json.dump(tok_cfg, f, indent=2, ensure_ascii=False)
+            return
+
+
+def _fix_bpe_chars(text):
+    # Replace raw byte-level BPE characters with actual characters.
+    # Some tokenizers (e.g. unsloth models) output GPT-2 byte-level BPE
+    # codepoints instead of the real characters.
+    return text.replace(chr(0x010A), "\n").replace(chr(0x0120), " ")
+
+
 def _strip_thinking_tokens(token_stream):
     # Yield visible text tokens, skipping thinking blocks from reasoning models.
     # Reasoning models (DeepSeek-R1, QwQ, etc.) generate internal thinking
@@ -532,11 +595,11 @@ def _strip_thinking_tokens(token_stream):
                 if start == -1:
                     safe = max(0, len(accumulated) - (len(OPEN) - 1))
                     if safe > 0:
-                        yield accumulated[:safe]
+                        yield _fix_bpe_chars(accumulated[:safe])
                         accumulated = accumulated[safe:]
                     break
                 if start > 0:
-                    yield accumulated[:start]
+                    yield _fix_bpe_chars(accumulated[:start])
                 accumulated = accumulated[start + len(OPEN):]
                 in_think = True
             else:
@@ -549,7 +612,7 @@ def _strip_thinking_tokens(token_stream):
                 in_think = False
 
     if accumulated and not in_think:
-        yield accumulated
+        yield _fix_bpe_chars(accumulated)
 
 
 def _start_chat(console: Console, model: str, adapter: str | None, template: str) -> None:
@@ -563,6 +626,8 @@ def _start_chat(console: Console, model: str, adapter: str | None, template: str
         console.print("[red]LLaMA-Factory is not installed.[/]")
         console.print("[dim]Install it with: pip install llamafactory[/]")
         return
+
+    _fix_tokenizer_class(model)
 
     config = {
         "model_name_or_path": model,
@@ -1336,6 +1401,8 @@ def chat(
     except ImportError:
         console.print("[red]llamafactory not installed. Run: phronis setup[/]")
         raise typer.Exit(1)
+
+    _fix_tokenizer_class(model_path)
 
     config = {
         "model_name_or_path": model_path,
