@@ -207,6 +207,7 @@ def run_training(console: Console, config_path: str, output_name: str, target_lo
     patience_counter = [0]
     patience_limit = 30  # logging steps after best loss to wait before stopping
     target_hit = [False]
+    early_stopped = [False]
 
     def _stream():
         try:
@@ -281,9 +282,11 @@ def run_training(console: Console, config_path: str, output_name: str, target_lo
                             f"\n[yellow]Target loss {target_loss:.4f} reached (best {best_loss[0]:.4f}). "
                             f"Patience exceeded ({patience_counter[0]} > {patience_limit}). Stopping...[/]"
                         )
+                        early_stopped[0] = True
                         if proc_ref[0] is not None:
                             try:
                                 proc_ref[0].terminate()
+                                proc_ref[0].wait(timeout=5)
                             except Exception:
                                 pass
                         break
@@ -317,7 +320,7 @@ def run_training(console: Console, config_path: str, output_name: str, target_lo
         done.set()
     thread.join(timeout=5)
 
-    success = returncode[0] == 0
+    success = returncode[0] == 0 or (target_hit[0] and early_stopped[0])
 
     # If we hit the target but stopped early, restore the best checkpoint
     if target_loss is not None and target_hit[0] and success:
