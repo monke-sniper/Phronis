@@ -5,6 +5,7 @@ regardless of the system's default Python version.
 """
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -117,8 +118,31 @@ def _venv_has_cpu_torch(venv_py: str) -> bool:
 
 def _machine_has_gpu() -> bool:
     """Return True if the machine appears to have an NVIDIA GPU."""
-    import shutil
     return shutil.which("nvidia-smi") is not None
+
+
+def _pip_works(python_exe: str) -> bool:
+    """Return True if `python -m pip --version` succeeds."""
+    try:
+        result = subprocess.run(
+            [python_exe, "-m", "pip", "--version"],
+            capture_output=True, text=True, timeout=15,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+
+
+def _try_bootstrap_pip(python_exe: str) -> bool:
+    """Try to bootstrap pip via ensurepip.  Returns True if pip works afterwards."""
+    try:
+        subprocess.run(
+            [python_exe, "-m", "ensurepip", "--default-pip"],
+            capture_output=True, timeout=30,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+    return _pip_works(python_exe)
 
 
 def _find_compatible_python():
@@ -127,15 +151,20 @@ def _find_compatible_python():
     1. Check current interpreter first.
     2. If current is missing CUDA, but version is OK, return it anyway
        (torch just needs reinstall).
-    3. Otherwise try the Windows `py` launcher for 3.12/3.11.
+    3. Otherwise try the Windows `py` launcher for 3.13/3.12/3.11.
+    4. Verify the candidate has a working pip; skip it if not.
     """
     current = sys.executable
     cur_major, cur_minor, _ = _current_python_info()
 
     if is_python_version_compatible(cur_major, cur_minor):
-        return current
+        if _pip_works(current):
+            return current
+        # Current interpreter is compatible but pip is missing — try to fix.
+        if _try_bootstrap_pip(current):
+            return current
 
-    # Current version is too new.  Search via py launcher.
+    # Current version is too new (or lacks pip).  Search via py launcher.
     for minor in (13, 12, 11):
         try:
             result = subprocess.run(
@@ -145,11 +174,71 @@ def _find_compatible_python():
             if result.returncode == 0:
                 path = result.stdout.strip()
                 if path:
-                    return path
+                    if _pip_works(path):
+                        return path
+                    # Found interpreter but pip is broken — try to fix.
+                    if _try_bootstrap_pip(path):
+                        return path
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
     return None
+
+
+def _repair_pip_in_venv(console: Console, venv_py: str) -> None:
+    """Ensure pip actually works inside the venv.
+
+    Handles the common Windows case where pip-*.dist-info exists but the
+    actual pip package directory is missing.  ensurepip sees the metadata
+    and reports "already satisfied" without installing anything.
+    """
+    # First attempt — plain ensurepip.
+    try:
+        subprocess.run(
+            [venv_py, "-m", "ensurepip", "--upgrade"],
+            capture_output=True, timeout=30,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    # Check if pip actually works.
+    try:
+        result = subprocess.run(
+            [venv_py, "-m", "pip", "--version"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0:
+            return  # pip is fine
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    # pip is broken — look for orphaned dist-info and remove it so
+    # ensurepip will actually reinstall.
+    try:
+        site_packages = subprocess.run(
+            [venv_py, "-c",
+             "import site; print(site.getsitepackages()[0])"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if site_packages.returncode != 0:
+            return
+        sp_dir = site_packages.stdout.strip()
+        for entry in os.listdir(sp_dir):
+            if entry.startswith("pip-") and entry.endswith(".dist-info"):
+                info_path = os.path.join(sp_dir, entry)
+                shutil.rmtree(info_path, ignore_errors=True)
+                console.print(f"[dim]Removed orphaned {entry}[/]")
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    # Second attempt — re-run ensurepip after cleanup.
+    try:
+        subprocess.run(
+            [venv_py, "-m", "ensurepip", "--upgrade"],
+            capture_output=True, timeout=30,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
 
 
 def ensure_isolated_venv(console: Console) -> bool:
@@ -170,10 +259,11 @@ def ensure_isolated_venv(console: Console) -> bool:
                 "[red]No compatible Python interpreter found.[/]"
             )
             console.print(
-                "[dim]phronis needs Python 3.11–3.13 with CUDA support.[/]"
+                "[dim]phronis needs Python 3.11–3.13 with a working pip.[/]"
             )
             console.print(
-                "[dim]Install Python 3.12 from https://python.org and re-run.[/]"
+                "[dim]Install Python 3.12 from https://python.org "
+                "(ensure 'pip' is checked in the installer) and re-run.[/]"
             )
             return False
 
@@ -194,15 +284,10 @@ def ensure_isolated_venv(console: Console) -> bool:
     if not missing_pkgs:
         return True
 
-    # Before installing anything, make sure pip actually works in the venv
-    # (some Windows venvs ship a broken pip.exe wrapper).
-    try:
-        subprocess.run(
-            [venv_py, "-m", "ensurepip", "--upgrade"],
-            capture_output=True, timeout=30,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
+    # Before installing anything, make sure pip actually works in the venv.
+    # Some Windows venvs ship a broken pip.exe wrapper or have orphaned
+    # dist-info without the actual pip package.
+    _repair_pip_in_venv(console, venv_py)
 
     try:
         pip_check = subprocess.run(
@@ -214,10 +299,12 @@ def ensure_isolated_venv(console: Console) -> bool:
 
     if pip_check is None or pip_check.returncode != 0:
         console.print(
-            "[red]pip is not working inside the isolated venv. "
-            "This usually means the base Python was installed without pip.[/]"
+            "[red]pip is not working inside the isolated venv.[/]"
         )
-        console.print("[dim]Re-install Python 3.12 with pip enabled and try again.[/]")
+        console.print(
+            "[dim]Try deleting the venv and re-running: "
+            f"Remove-Item -Recurse -Force \"{_venv_dir()}\"[/]"
+        )
         return False
 
     console.print(
