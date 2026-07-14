@@ -2069,8 +2069,20 @@ def repair(
 
     if os.path.isdir(venv_dir):
         try:
-            shutil.rmtree(venv_dir)
-            console.print(f"[green]Removed old venv: {venv_dir}[/]")
+            # On Windows while running inside the venv, .pyd files are locked
+            # so shutil.rmtree fails.  Rename and let ensure_isolated_venv create
+            # a fresh one; cleanup is attempted afterwards.
+            if os.name == "nt" and is_inside_isolated_venv():
+                import tempfile
+                cleanup_dir = os.path.join(
+                    os.path.dirname(venv_dir),
+                    f".venv_old_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                )
+                os.rename(venv_dir, cleanup_dir)
+                console.print(f"[green]Renamed old venv for cleanup: {cleanup_dir}[/]")
+            else:
+                shutil.rmtree(venv_dir)
+                console.print(f"[green]Removed old venv: {venv_dir}[/]")
         except Exception as e:
             console.print(f"[red]Failed to remove venv: {e}[/]")
             raise typer.Exit(1)
