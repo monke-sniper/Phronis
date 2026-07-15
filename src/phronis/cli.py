@@ -12,6 +12,7 @@ from datetime import datetime
 import questionary
 import typer
 import yaml
+from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
