@@ -8,7 +8,8 @@ class TestRunner:
     def test_find_cli_works(self):
         from phronis.runner import _find_cli
         cli = _find_cli()
-        assert os.path.isfile(cli) or cli is not None
+        assert isinstance(cli, list) and len(cli) >= 1
+        assert os.path.isfile(cli[0])
 
     def test_can_generate_valid_yaml_config(self):
         config = {

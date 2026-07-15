@@ -15,25 +15,29 @@ from rich.panel import Panel
 
 
 def _find_cli():
-    # 1. Prefer the isolated workspace venv
+    # 1. Prefer calling Python directly from the workspace venv.
+    #    This avoids Windows .exe shims that silently drop env vars
+    #    like PYTHONUTF8, which causes UnicodeEncodeError on non-ASCII
+    #    tokenizer output (e.g. DeepSeek-R1 fullwidth chars).
     try:
-        from .env_setup import _venv_cli
-        venv_cli = _venv_cli()
-        if os.path.isfile(venv_cli):
-            return venv_cli
+        from .env_setup import _venv_python
+        venv_py = _venv_python()
+        if os.path.isfile(venv_py):
+            return [venv_py, "-m", "llamafactory.cli"]
     except Exception:
         pass
 
+    # 2. Fall back to llamafactory-cli on PATH (wrapped in a list)
     cli = shutil.which("llamafactory-cli")
     if cli:
-        return cli
+        return [cli]
     bin_dir = os.path.join(os.path.dirname(sys.executable))
     for scripts_dir in ("Scripts", "bin"):
         candidate = os.path.join(bin_dir, scripts_dir, "llamafactory-cli")
         if os.name == "nt":
             candidate += ".exe"
         if os.path.isfile(candidate):
-            return candidate
+            return [candidate]
     raise RuntimeError(
         "llamafactory-cli not found. Install LLaMA-Factory: pip install llamafactory"
     )
@@ -212,7 +216,7 @@ def run_training(console: Console, config_path: str, output_name: str, target_lo
     def _stream():
         try:
             proc = subprocess.Popen(
-                [_get_cli(), "train", config_path],
+                _get_cli() + ["train", config_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -322,6 +326,16 @@ def run_training(console: Console, config_path: str, output_name: str, target_lo
 
     success = returncode[0] == 0 or (target_hit[0] and early_stopped[0])
 
+    if not success:
+        # Show the tail of captured output so the user sees the actual error
+        # instead of just "Training failed."
+        with lock:
+            tail = lines[-15:] if lines else []
+        if tail:
+            console.print()
+            for line in tail:
+                console.print(f"  [dim]{line}[/]")
+
     # If we hit the target but stopped early, restore the best checkpoint
     if target_loss is not None and target_hit[0] and success:
         _restore_checkpoint(console, output_dir, best_step[0], target_loss)
@@ -335,7 +349,7 @@ def run_export(console: Console, config_path: str) -> bool:
     try:
         with console.status("[bold green]Exporting / merging model...", spinner="dots"):
             result = subprocess.run(
-                [_get_cli(), "export", config_path],
+                _get_cli() + ["export", config_path],
                 text=True,
                 capture_output=True,
             )
