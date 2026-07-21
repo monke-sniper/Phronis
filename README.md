@@ -28,9 +28,6 @@
 
 <br>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/monke-sniper/phronis/main/assets/demo.gif" alt="phronis demo" width="700">
-</p>
 
 ---
 
